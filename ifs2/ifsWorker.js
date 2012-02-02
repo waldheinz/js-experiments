@@ -8,7 +8,7 @@ var baseIfs = null;
 var shouldStop = true;
 var population = null;
 var popSize = 500;
-var bestDiff = 100000;
+var bestFitness = 0;
 
 self.onmessage = function(e) {
     var parts = e.data.split(" ", 2);
@@ -115,19 +115,18 @@ function Evaluated(ifs, fitness) {
 function evalIfs(ifs) {
     var img = new Image(targetImage.width, targetImage.height);
     ifs.draw(img);
-    var diff = img.difference(targetImage);
-    var fitness = 1 / diff;
+    var fit = img.similarity(targetImage);
     
-    if (diff < bestDiff) {
+    if (fit > bestFitness) {
         bestIfs = ifs.clone();
-        bestDiff = diff;
+        bestFitness = fit;
         reportImprovement(img);
         reportBestIfs(bestIfs);
     } else {
         reportProgress(img);
     }
     
-    return new Evaluated(ifs, fitness);
+    return new Evaluated(ifs, fit);
 }
 
 function reportStats(pop, gen) {

@@ -41,7 +41,7 @@ function Image(w, h, pixels) {
         ctx.putImageData(cd, 0, 0);
     }
     
-    this.difference = function(img) {
+    this.similarity = function(img) {
         var w = this.width;
         var h = this.height;
                 
@@ -53,11 +53,12 @@ function Image(w, h, pixels) {
             for (var x=0; x < w; x++) {
                 var idx = off + x;
                 var d = this.pixels[idx] - img.pixels[idx];
-                diff += (d*d);
+                diff += d * d;
             }
         }
         
-        return (diff / (w * h));
+        var maxDiff = w * h;
+        return (1 - (diff / maxDiff)) * 100;
     }
     
     this.serialize = function() {
