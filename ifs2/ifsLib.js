@@ -129,98 +129,98 @@ var COEFF_COUNT = 12;
 
 function Ifs(funcs) {
     this.funcs = funcs;
-    
-    this.crossover = function(other) {
-        var newFuncs = new Array();
-        
-        for (var i=0; i < this.funcs.length; i++) {
-            if (Math.random() < 0.5) {
-                newFuncs.push(new Array().concat(this.funcs[i]));
-            } else {
-                newFuncs.push(new Array().concat(other.funcs[i]));
-            }
-        }
-        
-        return new Ifs(newFuncs);
-    }
-    
-    this.mutate = function(delta) {
-        var d2 = delta / 5;
-        if (Math.random < d2) {
-            this.incr += (Math.random() - 0.5) * delta;
-        }
-        
-        for (var func=0; func < this.funcs.length; func++) {
-            var f = this.funcs[func];
-            
-            for (var c=0; c < f.length; c++) {
-                if (Math.random() < d2) {
-                    f[c] += (Math.random() - 0.5) * delta;
-                }
-            }
-        }
-    }
-    
-    this.clone = function() {
-        return parseIfs(this.serialize());
-    }
-    
-    this.serialize = function() {
-        var result = "";
-        
-        result += this.funcs.length;
-        result += ",";
-        
-        for (var func=0; func < this.funcs.length; func++) {
-            var f = this.funcs[func];
-            
-            for (var coeff=0; coeff < f.length; coeff++) {
-                result += f[coeff];
-                result += ",";
-            }
-        }
-        
-        return result;
-    }
-    
-    this.draw = function(image) {
-        /* reset image to black */
-        var data = new Float32Array(image.width * image.height);
-        image.pixels = data;
-        this.add(image, 1, 1);
-    }
-    
-    this.add = function(image, scale, itDiv) {
-        var w = image.width;
-        var h = image.height;         
-        var dx = w / 2;
-        var dy = h / 2;
-        
-        var data = image.pixels;
-        
-        var x = 0;
-        var y = 0;
-        var c = 0;
-        var iterations = (w * h * this.funcs.length) / itDiv;
-        scale = scale / this.funcs.length;
-        for (i=0; i < iterations; i++) {
-            var fidx = Math.floor(Math.random() * this.funcs.length);
-            var func = this.funcs[fidx];
-            
-            var tx = func[0] * x + func[1] * y + func[2] * c + func[3];
-            var ty = func[4] * x + func[5] * y + func[6] * c + func[7];
-            c      = func[8] * x + func[9] * y + func[10] * c + func[11];
-            x = tx;
-            y = ty;
-            if (i < 100) continue;
-            
-            var px = Math.floor(x * w + dx);
-            var py = Math.floor(y * h + dy);
+}
 
-            if (px >= 0 && px < w && py >= 0 && py < h) {
-                var off = (px + py * w);
-                data[off] += c * scale;
+Ifs.prototype.crossover = function(other) {
+    var newFuncs = new Array();
+
+    for (var i=0; i < this.funcs.length; i++) {
+        if (Math.random() < 0.5) {
+            newFuncs.push(new Array().concat(this.funcs[i]));
+        } else {
+            newFuncs.push(new Array().concat(other.funcs[i]));
+        }
+    }
+
+    return new Ifs(newFuncs);
+}
+    
+Ifs.prototype.mutate = function(delta) {
+    var d2 = delta / 5;
+    if (Math.random < d2) {
+        this.incr += (Math.random() - 0.5) * delta;
+    }
+
+    for (var func=0; func < this.funcs.length; func++) {
+        var f = this.funcs[func];
+
+        for (var c=0; c < f.length; c++) {
+            if (Math.random() < d2) {
+                f[c] += (Math.random() - 0.5) * delta;
             }
+        }
+    }
+}
+    
+Ifs.prototype.clone = function() {
+    return parseIfs(this.serialize());
+}
+    
+Ifs.prototype.serialize = function() {
+    var result = "";
+
+    result += this.funcs.length;
+    result += ",";
+
+    for (var func=0; func < this.funcs.length; func++) {
+        var f = this.funcs[func];
+
+        for (var coeff=0; coeff < f.length; coeff++) {
+            result += f[coeff];
+            result += ",";
+        }
+    }
+
+    return result;
+}
+    
+Ifs.prototype.draw = function(image) {
+    /* reset image to black */
+    var data = new Float32Array(image.width * image.height);
+    image.pixels = data;
+    this.add(image, 1, 1);
+}
+
+Ifs.prototype.add = function(image, scale, itDiv) {
+    var w = image.width;
+    var h = image.height;         
+    var dx = w / 2;
+    var dy = h / 2;
+
+    var data = image.pixels;
+
+    var x = 0;
+    var y = 0;
+    var c = 0;
+    var iterations = (w * h * this.funcs.length) / itDiv;
+    scale = scale / this.funcs.length;
+    for (i=0; i < iterations; i++) {
+        var fidx = Math.floor(Math.random() * this.funcs.length);
+        var func = this.funcs[fidx];
+
+        var tx = func[0] * x + func[1] * y + func[2] * c + func[3];
+        var ty = func[4] * x + func[5] * y + func[6] * c + func[7];
+        c      = func[8] * x + func[9] * y + func[10] * c + func[11];
+        x = tx;
+        y = ty;
+        if (i < 100) continue;
+
+        var px = Math.floor(x * w + dx);
+        var py = Math.floor(y * h + dy);
+
+        if (px >= 0 && px < w && py >= 0 && py < h) {
+            var off = (px + py * w);
+            data[off] += c * scale;
         }
     }
 }
