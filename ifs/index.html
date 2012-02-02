@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>IFS</title>
+
+        <style type="text/css" >
+            
+        </style>
+    </head>
+    <body>
+
+    <canvas id="orig"></canvas>
+    
+    <canvas id="best"></canvas>
+
+    <canvas id="evolve"></canvas>
+
+    <div id="logDiv">
+        messages:<br>
+    </div>
+
+    <script type="text/javascript">
+        var image = null;
+        var width = 0;
+        var height = 0;
+        var pixelCount = 0;
+        var ifs = null;
+        var orig = document.getElementById("orig");
+       // var origCtx = null;
+        var origData = null;
+        var best = document.getElementById("best");
+        var bestIfs = null;
+        var bestError = null;
+        var evolve = document.getElementById("evolve");
+        var evolveCtx = evolve.getContext("2d");
+        var logDiv = document.getElementById("logDiv");
+        
+        function log(message) {
+            logDiv.innerHTML += message + "<br>";
+        }
+
+        var leaf = [
+            [ 0.14,  0.01,  0.00, 0.51, -0.08, -1.31 ],
+            [ 0.43,  0.52, -0.45, 0.50,  1.49, -0.75 ],
+            [ 0.45, -0.49,  0.47, 0.47, -1.62, -0.74 ],
+            [ 0.49,  0.00,  0.00, 0.51,  0.02,  1.62 ]
+        ];
+
+        function randomIfs(funcs) {
+            var ifs = Array();
+            
+            for (var i=0; i < funcs; i++) {
+                var func = Array();
+
+                for (var j=0; j < 30; j++) {
+                    func.push(Math.random() - 0.5);
+                }
+
+                ifs.push(func);
+            }
+
+            return ifs;
+        }
+
+        function mutateIfs(ifs) {
+            for (var i=0; i < ifs.length; i++) {
+                var func = ifs[i];
+
+                for (var j=0; j < func.length; j++) {
+                    var off = (Math.random() - 0.5) * 0.05;
+                    func[j] += off;
+                }
+            }
+        }
+
+        function compare() {
+            var error = 0;
+
+            var ed = evolveCtx.getImageData(0, 0, width, height);
+            var edd = ed.data;
+
+            for(var i=0;i<pixelCount * 4;++i) {
+                if(i%4!=3)
+                    error += Math.abs(origData[i]-edd[i]);
+            }
+
+            //log(error);
+            
+            if (bestError == null || bestError > error) {
+                bestIfs = ifs;
+                bestError = error;
+                best.getContext("2d").putImageData(ed, 0,0);
+                log("best=" + bestError);
+            } else {
+                ifs = bestIfs;
+            }
+
+            setTimeout(modify, 1);
+        }
+
+        function modify() {
+            mutateIfs(ifs);
+            drawIfs(ifs, evolve);
+            compare();
+        }
+
+        var ifs = null;
+        
+        function onImgLoad() {
+            width = image.width;
+            height = image.height;
+            pixelCount = width * height;
+            orig.setAttribute("width", width);
+            orig.setAttribute("height", height);
+//            orig.width = width;
+//            orig.height = height;
+            origCtx = orig.getContext("2d");
+            
+            
+            origCtx.drawImage(image, 0, 0);
+            origData = origCtx.getImageData(0,0, width, height).data;
+            
+            evolve.width = width;
+            evolve.height = height;
+            best.width = width;
+            best.height = height;
+
+            ifs = randomIfs(10);
+            drawIfs(ifs);
+            modify();
+        }
+
+
+        function loadImage(url) {
+            image = new Image();
+            image.onload = onImgLoad;
+            image.src = url;
+        }
+      
+        loadImage("./pic.jpg");
+
+        function rndFunc(ifs) {
+            var idx=Math.floor(Math.random() * ifs.length);
+            return ifs[idx];
+        }
+
+        function applyFunc(vars, func) {
+            var result = new Array();
+            for (var i=0; i < vars.length; i++) {
+                result.push(0);
+            }
+            
+            var off=0;
+
+            for (var i=0; i < vars.length; i++) {
+                for (var j=0; j < vars.length; j++) {
+                    result[i] += func[off++] * vars[j];
+                }
+
+                result[i] += func[off++];
+            }
+            
+            return result;
+        }
+
+        function drawIfs(ifs) {
+            var ctx = evolve.getContext("2d");
+            var w = evolve.width;
+            var h = evolve.height;
+            
+            var dx = w / 2;
+            var dy = h / 2;
+            
+            var cdata = ctx.createImageData(w, h);
+            var data = cdata.data;
+
+            for (var y=0; y < h; y++) {
+                for (var x=0; x < w; x++) {
+                    var off = (x + y * w) * 4;
+                    data[off] = 0;
+                    data[off+1] = 0;
+                    data[off+2] = 0;
+                    data[off+3] = 255;
+                }
+            }
+
+            var x = 0;
+            var y = 0;
+            var r = 0;
+            var g = 0;
+            var b = 0;
+            
+            for (var i=0; i < w * h * 1; i++) {
+                var func = rndFunc(ifs);
+                var vars = applyFunc([x, y, r, g, b], func);
+                //var tx = func[o++] * x + func[o++] * y + func[o++] * v + func[o++];
+                //var ty = func[o++] * x + func[o++] * y + func[o++] * v + func[o++];
+                //var tv = func[o++] * x + func[o++] * y + func[o++] * v + func[o++];
+                
+                x = vars[0];
+                y = vars[1];
+                r = vars[2];
+                g = vars[3];
+                b = vars[4];
+                
+                if (i < 100) continue;
+
+                var px = Math.floor(x * 10 + dx);
+                var py = Math.floor(y * 10 + dy);
+                
+                if (px >= 0 && px < w && py >= 0 && py < h ) {
+                    var off = (px + py * w) * 4;
+                    var ir = Math.max(0, Math.min(255, Math.floor(r * 255)));
+                    var ig = Math.max(0, Math.min(255, Math.floor(g * 255)));
+                    var ib = Math.max(0, Math.min(255, Math.floor(b * 255)));
+                    
+                    data[off] += ir;
+                    data[off+1] += ig;
+                    data[off+2] += ib;
+                    data[off+3] = 255;
+                    //throw "sdfsdf";
+                } else {
+                   // log("XXX x=" + px + ", y=" + py);
+                    //throw "sdfsfd";
+                }
+            }
+            
+            ctx.putImageData(cdata, 0, 0);
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+
+root { 
+    display: block;
+}
+
+h1, h2 {
+    clear: both;
+}
+
+canvas.small {
+    width: 32px;
+    height: 32px;
+}

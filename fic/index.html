@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Fractal Image Compression</title>
+        <link rel="stylesheet" type="text/css" href="style.css" />
+        <script src="../js/jquery.min.js"></script>
+        <script src="imgLib.js"></script>
+        <script src="fic.js"></script>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    </head>
+
+    <body onload="init()">
+        <h1>Fractal Image Compression</h1>
+
+        <h2>Load Image</h2>
+        <p>
+            You can load any image here to play with, by simply pasting the
+            image URL into the input field: <br />
+            <input id="imageUrl" size="50" value=""/>
+            <button onclick="loadUrlImage(); return false;">load</button><br />
+            <img id="sourceImage" src="dreamteam.png" />
+        </p>
+
+        <h2>Compress</h2>
+        <div>
+            <div style="float: left">
+                <canvas id="errorMap"></canvas><br />
+                <div id="stats"></div>
+            </div>
+            <div style="float: right">
+                <select id="rsSelect">
+                    <option value="2">4 px</option>
+                    <option value="3" selected>8 px</option>
+                    <option value="4">16 px</option>
+                    <option value="5">32 px</option>
+                </select>
+                <input id="grayCb" type="checkbox" />
+                <label for="grayCb"> grayscale</label>
+                <button id="startBtn" onclick="start()">start</button>
+                <div>
+                    <progress id="compProg"></progress>
+                </div>
+            </div>
+        </div>
+        <h2>Explore</h2>
+        <div>
+            <div>
+                <div style="float:left">
+                    <canvas id="sourceCanvas"></canvas>
+                </div>
+                <div>
+                    <canvas id="targetCanvas"></canvas><br />
+                    <button id="decodeBtn" onclick="decode()">decode</button>
+                </div>
+            </div>
+            To represent
+            <canvas id="original" class="small" style="border: 1px solid #f00"></canvas>
+            we took
+            <canvas id="scaled" class="small" style="border: 1px solid #0f0"></canvas> and
+            transformed it to be like
+            <canvas id="transformed" class="small"></canvas>, 
+            adjusted brightness and contrast so it looks like
+            <canvas id="adjusted" class="small"></canvas>,
+            which resulted in a difference of
+            <canvas id="difference" class="small"></canvas>.
+        </div>
+
+
+        <h2>Messages</h2>
+        <pre id="log"></pre>
+
+        <h2>Compressed Image Data</h2>
+        <pre id="fractalJson"></pre>
+
+        <script>
+            var bestImage = null;
+            var sourceImage;
+            var decoder = null;
+            var pass = 0;
+            
+            function init() {
+                $('#sourceCanvas').click(showHowItWorks);
+            }
+            
+            
+            function loadUrlImage() {
+                var imgUrl = $('#imageUrl').get(0).value;
+                $('#sourceImage').attr('src', "../proxy.php?url=" + encodeURI(imgUrl));
+            }
+            
+            function doPass() {
+                decoder.onePass();
+                var cEl = $('#targetCanvas').get(0);
+                decoder.image.paint(cEl);
+                
+                if (pass++ < 10) {
+                    setTimeout(doPass, 1000);
+                } else {
+                    pass = 0;
+                    $('#decodeBtn').attr('disabled', false);
+                }
+            }
+            
+            
+            function decode() {
+                if (bestImage == null) return;
+                $('#decodeBtn').attr('disabled', true);
+                decoder  = new Decoder(bestImage, 0);
+                
+                setTimeout(doPass, 1000);
+            }
+            
+            function start () {
+                $('#startBtn').attr('disabled', true);
+                $('#rsSelect').attr('disabled', true);
+                $('#grayCb').attr('disabled', true);
+                
+                /* create worker */
+                log("starting...");
+                var worker = new Worker('ficWorker.js');
+                worker.onmessage = handleWorkerMessage;
+                
+                /* choose POT sized region to actually work on */
+                
+                var cspace = ($('#grayCb').attr('checked')) ? "gray" : "yuv";
+                
+                var img = imageToImage($('#sourceImage').get(0), cspace);
+                
+                var sz = Math.min(img.width, img.height);
+                var potSz = 2;
+                
+                while (potSz * 2 <= sz) {
+                    potSz *= 2;
+                }
+                
+                var top = Math.floor((img.height - potSz) / 2);
+                var left = Math.floor((img.width - potSz) / 2);
+                
+                /* transmit image */
+                sourceImage = img.copy(left, top, potSz, potSz);
+                
+                var i2 = parseImage(sourceImage.serialize());
+                i2.paint($('#sourceCanvas').get(0));
+                
+                worker.postMessage("setImage " + sourceImage.serialize());
+                worker.postMessage("setDomainSize " + $('#rsSelect').val());
+                worker.postMessage("start");
+            }
+            
+            function log(message) {
+                appendLog("master: " + message);
+            }
+            
+            function appendLog(message) {
+                $('#log').prepend(message + '\n');
+            }
+            
+            function updateErrorMap(max) {
+                var sz = 4;
+                var vs = bestImage.channels[0];
+                var nx = vs.length;
+                var ny = vs[0].length;
+                
+                var img = createImage(sz * nx, sz * ny, 3, "rgb");
+                
+                for (var y=0; y < ny; y++) {
+                    for (var x=0; x < nx; x++) {
+                        var e = vs[x][y].error 
+                        var c = (e < 1) ? 1 : 0;
+                        var v = (e < 1) ? 128 + (1-e) * 127 : Math.pow(e / max, 0.5) * 255;
+                        img.fillRect(x * sz, y * sz, sz, sz, c, v);
+                    }
+                }
+                
+                img.paint($('#errorMap').get(0));
+            }
+            
+            function showHowItWorks(evt) {
+                if (!bestImage) {
+                    return false;
+                }
+                
+                var srcCanvas = $('#sourceCanvas').get(0);
+                sourceImage.paint(srcCanvas);
+                
+                var rangeSize =  1 << parseInt($('#rsSelect').val());
+                var x = Math.floor((evt.pageX -
+                    $("#sourceCanvas").offset().left) / rangeSize);
+                
+                var y = Math.floor((evt.pageY -
+                    $("#sourceCanvas").offset().top) / rangeSize);
+                
+                /* highlight target */
+                
+                var ctx = $('#sourceCanvas').get(0).getContext("2d");
+                ctx.fillStyle = "rgba(255,0,0, 0.5)";
+                ctx.fillRect(x*rangeSize, y*rangeSize, rangeSize, rangeSize);
+                
+                /* highlight source */
+                var r = bestImage.channels[0][x][y];
+                var pos = r.pos;
+                var srcSize = srcCanvas.width;
+                var d = srcSize;
+                srcSize >>= pos.length;
+                var sx = 0;
+                var sy = 0;
+                
+                for (var i=0; i < pos.length; i++) {
+                    d >>= 1;
+                    
+                    switch (pos[i]) {
+                        case 0: /* top left */
+                            continue;
+                    
+                        case 1: /* top right */
+                            sx += d;
+                            continue;
+                    
+                        case 2: /* bottom left */
+                            sy += d;
+                            continue;
+                    
+                        case 3: /* bottom right */
+                            sx += d;
+                            sy += d;
+                            continue;
+                    
+                        default:
+                            throw "illegal pos " + pos[i];
+                    }
+                }
+                
+                var srcSize = srcCanvas.width;
+                srcSize >>= pos.length;
+                
+                ctx.fillStyle = "rgba(0,255,0, 0.5)";
+                ctx.fillRect(sx, sy, srcSize, srcSize);
+                
+                var img = sourceImage.copy(sx, sy, srcSize, srcSize);
+                
+                while (img.width > rangeSize) {
+                    img = img.halfSize();
+                }
+                
+                img.paint($('#scaled').get(0));
+                img.transform(r.transform);
+                img.paint($('#transformed').get(0));
+                img.adjust(r.brightness, r.contrast);
+                img.paint($('#adjusted').get(0));
+                
+                var orig = sourceImage.copy(
+                r.posX * rangeSize, r.posY * rangeSize,
+                rangeSize, rangeSize);
+                
+                orig.paint($('#original').get(0));
+                img.difference(orig).paint($('#difference').get(0));
+                
+                return false;
+            }
+            
+            function handleWorkerMessage(evt) {
+                var parts = evt.data.split(" ");
+                var cmd = parts[0];
+                var param = parts.slice(1).join(" ");
+                
+                switch (cmd) {
+                    case "stats":
+                        var genInfo = param.split("#");
+                        appendStats(genInfo);
+                        break;
+                        
+                    case "log":
+                        appendLog("worker: " + param);
+                        break;
+                        
+                    case "progress":
+                        var current = parts[1];
+                        var total = parts[2];
+                        //                        appendLog("progress: " + current + "/" + total);
+                        $('#compProg').attr('value', current);
+                        $('#compProg').attr('max', total);
+                        break;
+                        
+                    case "imageProgress":
+                        bestImage = JSON.parse(param);
+                        var a = extractStats(bestImage);
+                        var statsString =
+                            "error min=" + a[0] + ", avg=" + a[1] + ", max=" + a[2];
+                        $('#stats').html(statsString);
+                        updateErrorMap(a[2]);
+                        //                        $('#fractalJson').html(JSON.stringify(bestImage, null, 3));
+                        break;
+                        
+                    case "result":
+                        var imgData = JSON.parse(param);
+                        $('#fractalJson').html(JSON.stringify(imgData, null, 3));
+                        break;
+                        
+                    default:
+                        appendLog("worker: UNKNOWN COMMAND \"" + cmd + "\"");
+                }
+            }
+        </script>
+
+    </body>
+
+</html>

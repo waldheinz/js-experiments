@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Fractal Image Compression</title>
+        <script src="../js/jquery.min.js"></script>
+        <script src="imgLib.js"></script>
+        <script src="fic.js"></script>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    </head>
+
+    <body>
+        <div>
+            <span>
+                <img id="sourceImage" src="chkb.jpg" />
+            </span>
+            
+            <span>
+                <canvas id="targetCanvas"></canvas><br/>
+                <button id="decodeBtn" onclick="decode()">decode</button>
+            </span>
+        </div>
+
+        <div>
+            <select id="dsSelect">
+                <option value="3">8 px</option>
+                <option value="4">16 px</option>
+                <option value="5" selected>32 px</option>
+                <option value="6">64 px</option>
+            </select>
+
+            <button id="startBtn" onclick="start()">start</button>
+            <div>
+                <progress id="compProg"></progress>
+            </div>
+        </div>
+
+        <h2>Messages</h2>
+        <pre id="log"></pre>
+
+        <h2>Compressed Image Data</h2>
+        <pre id="fractalJson"></pre>
+
+        <script>
+            var bestImage = null;
+            var decoder = null;
+            var pass = 0;
+            
+            function doPass() {
+                decoder.onePass();
+                var cEl = $('#targetCanvas').get(0);
+//                var i = dec.image.clone();
+//                i.scale(2);
+                decoder.image.paint(cEl);
+                
+                if (pass++ < 10) {
+                    setTimeout(doPass, 1000);
+                } else {
+                    pass = 0;
+                    $('#decodeBtn').attr('disabled', false);
+                }
+            }
+            
+            
+            function decode() {
+                if (bestImage == null) return;
+                $('#decodeBtn').attr('disabled', true);
+                
+//                decoder = new Worker('ficWorker.js');
+//                decoder.onmessage = function(evt) {
+//                    var parts = evt.data.split(" ");
+//                    var cmd = parts[0];
+//                    var param = parts.slice(1).join(" ");
+//                    
+//                    switch (cmd) {
+//                        case 'log':
+//                            appendLog("decode: " + param);
+//                            break;
+//                            
+//                        case 'decodeProgress':
+//                            var img = parseImage(param);
+//                            img.paint($('#targetCanvas').get(0));
+//                            break;
+//                            
+//                        case 'decodeDone':
+//                            $('#decodeBtn').attr('disabled', false);
+//                            break;
+//                            
+//                        default:
+//                            appendLog("decode: UNKNOWN COMMAND \"" + cmd + "\"");
+//                    }
+//                }
+//                
+                var image = $('#sourceImage').get(0);
+//                  decoder.postMessage(
+//                    "setTargetSize " + (image.width*s) + " " + (image.height*s));
+                
+                var dest = new Image(image.width, image.height);
+                decoder  = new Decoder(bestImage, dest);
+                dest.paint($('#targetCanvas').get(0));
+                setTimeout(doPass, 1000);
+//                decoder.postMessage(
+//                "decodeImage " + JSON.stringify(bestImage));
+            }
+            
+            function start () {
+                $('#startBtn').attr('disabled', true);
+                
+                /* create worker */
+                log("starting...");
+                var worker = new Worker('ficWorker.js');
+                worker.onmessage = handleWorkerMessage;
+                
+                /* transmit image */
+                var image = imageToImage($('#sourceImage').get(0));
+                
+                var i2 = parseImage(image.serialize());
+                i2.paint($('#targetCanvas').get(0));
+                
+                worker.postMessage("setImage " + image.serialize());
+                worker.postMessage("setDomainSize " + $('#dsSelect').val());
+                worker.postMessage("start");
+            }
+            
+            function log(message) {
+                appendLog("master: " + message);
+            }
+            
+            function appendLog(message) {
+                $('#log').prepend(message + '\n');
+            }
+            
+            function handleWorkerMessage(evt) {
+                var parts = evt.data.split(" ");
+                var cmd = parts[0];
+                var param = parts.slice(1).join(" ");
+                
+                switch (cmd) {
+                    case "stats":
+                        var genInfo = param.split("#");
+                        appendStats(genInfo);
+                        break;
+                        
+                    case "log":
+                        appendLog("worker: " + param);
+                        break;
+                        
+                    case "progress":
+                        var current = parts[1];
+                        var total = parts[2];
+                        
+                        $('#compProg').attr('value', current);
+                        $('#compProg').attr('max', total);
+                        break;
+                        
+                    case "imageProgress":
+                        bestImage = JSON.parse(param);
+                        break;
+                        
+                    case "result":
+                        var imgData = JSON.parse(param);
+                        $('#fractalJson').html(JSON.stringify(imgData, null, 3));
+                        break;
+                        
+                    default:
+                        appendLog("worker: UNKNOWN COMMAND \"" + cmd + "\"");
+                }
+            }
+
+        </script>
+
+    </body>
+
+</html>

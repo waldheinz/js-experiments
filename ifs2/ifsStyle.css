@@ -1,0 +1,19 @@
+
+img#previewImage {
+    max-width: 96px;
+    max-height: 96px;
+    float: left;
+    padding-right: 1em;
+}
+
+div#largeContainer {
+    float: right;
+}
+
+div.targetControls {
+    float: left;
+}
+
+h2 {
+    clear: left;
+}

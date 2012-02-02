@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>IFS Image Evolution</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <link rel="stylesheet" type="text/css" href="ifsStyle.css">
+        <script src="ifsLib.js"></script>
+        <script src="../js/jquery.min.js"></script>
+        <script src="../js/jquery.flot.js"></script>
+        <script src="../js/json2.js"></script>
+
+        <script type="text/javascript">
+            var ifsBest = null;
+            
+            var popStats = document.getElementById("popStats");
+            var large = document.getElementById("largeCanvas");
+            var renderProg = document.getElementById("largeProgress");
+            
+            var targetSize = 32;
+            var largeSize = 320;
+            var targetImage = null;
+            var hqRenderer = null;
+            var statsDataMin = new Array();
+            var statsDataAvg = new Array();
+            var statsDataMax = new Array();
+            
+            function loadUrlImage() {
+                var imgUrl = document.targetForm.imageUrl.value;
+                $('#previewImage').attr('src', "../proxy.php?url=" + encodeURI(imgUrl));
+            }
+            
+            function aspectSize(w, h, max) {
+                var aspect = w / h;
+                if (aspect > 1) {
+                    return [max, max / aspect];
+                } else {
+                    return [max * aspect, max];
+                }
+            }
+            
+            function updateTarget() {
+                var img = $('#previewImage').get(0);
+                var target = $('#targetCanvas').get(0);
+                
+                var sz = aspectSize(img.width, img.height, targetSize);
+                target.width = sz[0];
+                target.height = sz[1];
+                
+                /* update "large" canvas */
+                
+                var large = $('#largeCanvas').get(0);
+                var ls = aspectSize(img.width, img.height, largeSize);
+                large.width = ls[0];
+                large.height = ls[1];
+                
+                /* copy image to target */
+                var tCtx = target.getContext("2d");
+                tCtx.drawImage(img, 0, 0, sz[0], sz[1]);
+                
+                targetImage = canvasToImage(target);
+                targetImage.paint(target);
+            }
+            
+            function updatePlot() {
+                $.plot($("#statsPlot"), [
+                    {
+                        label   : "min",
+                        data    : statsDataMin
+                    }, {
+                        label   : "avg",
+                        data    : statsDataAvg
+                    }, {
+                        label   : "max",
+                        data    : statsDataMax
+                    }
+                ], {
+                    legend      : { position : "se" }
+                });
+            }
+            
+            function renderHq() {
+                $("#renderBtn").attr("disabled", true);
+                var r = hqRenderer;
+                var large = $('#largeCanvas').get(0);
+                
+                var w = large.width;
+                var h = large.height;
+                
+                r.postMessage("setSize " + w + "x" + h);
+                r.postMessage("setIfs " + ifsBest.serialize());
+                r.postMessage("doRender 15");
+            }
+            
+            function init() {
+                updatePlot();
+                
+                var worker = new Worker("ifsWorker.js");
+                worker.onmessage = handleWorkerMessage;
+                setTarget(worker, targetImage);
+                startWorker(worker);
+                
+                hqRenderer = new Worker("ifsRenderer.js");
+                hqRenderer.onmessage = handleRendererMessage;
+            }
+            
+            function handleRendererMessage(evt) {
+                var parts = evt.data.split(" ");
+                var cmd = parts[0];
+                var param = parts.slice(1).join(" ");
+                
+                switch (cmd) {
+                    case "log":
+                        appendLog("renderer: " + param);
+                        break;
+                        
+                    case "passDone":
+                        var img = parseImage(param);
+                        img.paint($('#largeCanvas').get(0));
+                        break;
+                        
+                    case "renderDone":
+                        document.getElementById("renderBtn").disabled = false;
+                        break;
+                        
+                    case "renderStarted":
+                        $('#largeProg').get(0).value = 0;
+                        break;
+                        
+                    case "progress":
+                        $('#largeProg').get(0).value = param;
+                        break;
+                        
+                    default:
+                        appendLog("unknown response from renderer " + evt.data);
+                }
+            }
+            
+            function appendLog(message) {
+                var oldLog = document.getElementById("log").innerHTML;
+                document.getElementById("log").innerHTML =
+                    message + '\n' + oldLog;
+            }
+            
+            function appendStats(stats) {
+                var gen = stats.shift();
+                var min = stats.shift();
+                var avg = stats.shift();
+                var max = stats.shift();
+                
+                statsDataMin.push([gen, min]);
+                statsDataAvg.push([gen, avg]);
+                statsDataMax.push([gen, max]);
+                
+                updatePlot();
+            }
+            
+            function handleWorkerMessage(evt) {
+                var parts = evt.data.split(" ");
+                var cmd = parts[0];
+                var param = parts.slice(1).join(" ");
+                
+                switch (cmd) {
+                    case "stats":
+                        var genInfo = param.split("#");
+                        appendStats(genInfo);
+                        break;
+                        
+                    case "log":
+                        appendLog("worker: " + param);
+                        break;
+                        
+                    case "improved":
+                        var img = parseImage(param);
+                        img.paint($('#bestCanvas').get(0));
+                        break;
+                        
+                    case "progress":
+                        var img = parseImage(param);
+                        img.paint($('#workCanvas').get(0));
+                        break;
+                        
+                    case "bestIfs":
+                        ifsBest = parseIfs(param);
+                        $("#bestIfsJson").val(JSON.stringify(ifsBest, null, 3));
+                        break;
+                        
+                    default:
+                        appendLog("worker: UNKNOWN COMMAND \"" + cmd + "\"");
+                }
+            }
+
+        </script>
+    </head>
+
+    <body>
+        <h1>IFS Image Evolution, Episode 2</h1>
+
+        <div id="largeContainer">
+            <h2>Large View</h2>
+            <div>
+                <canvas id="largeCanvas" width="320" height="320"></canvas>
+            </div><div>
+                <button onclick="renderHq()" id="renderBtn">update</button>
+                <progress id="largeProg" value="0" max="100"></progress>
+            </div>
+        </div>
+
+        <h2>Select Target Image</h2>
+        <form name="targetForm">
+            <img id="previewImage" onload="updateTarget()" src="smp-phil-collins.jpg"/>
+            <div class="targetControls">
+                Give URL
+                <input name="imageUrl" size="50" value=""/>
+                <button onclick="loadUrlImage(); return false;">load</button><br />
+                Or select one of the examples<br/>
+                <script>
+                    function sampleClicked(elem) {
+                        $('#previewImage').attr("src", elem.src);
+                    }
+                </script>
+                <img onclick="sampleClicked(this);" src="smp-phil-collins.jpg" />
+                <img onclick="sampleClicked(this);" src="smp-cross.png" />
+                <img onclick="sampleClicked(this);" src="smp-heart.png" />
+            </div>
+        </form>
+
+        <h2>Configure Target</h2>
+        <p>
+            <canvas id="targetCanvas" width="32" height="32"></canvas>
+            <select onchange="updateTargetSize(this);">
+                <option value="32" selected>32 px</option>
+                <option value="48">48 px</option>
+                <option value="64">64 px</option>
+                <option value="96">96 px</option>
+            </select>
+            <script>
+                function updateTargetSize(elem) {
+                    targetSize = elem.options[elem.selectedIndex].value;
+                    updateTarget();
+                }
+            </script>
+            <button onclick="init();">give your best!</button>
+        </p>
+        <h2>Progress</h2>
+        <p>
+            <canvas id="bestCanvas" width="100" height="100"></canvas>
+            <canvas id="workCanvas" width="100" height="100"></canvas>
+        </p>
+
+        <h3>Population Fitness</h3>
+
+        <div id="statsPlot" style="width:600px;height:200px;"></div>
+
+        <h3>Logging</h3>
+        <p>
+            <textarea id="log" cols="80" rows="15"></textarea>
+        </p>
+
+        <h3>Best IFS</h3>
+        <p>
+            <textarea id="bestIfsJson" cols="80" rows="15"></textarea>
+        </p>
+
+    </body>
+</html>
