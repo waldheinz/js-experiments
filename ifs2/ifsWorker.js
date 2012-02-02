@@ -62,7 +62,7 @@ function oneGeneration() {
     var offspring = new Array();
     for (var i=0; i < popSize / 5; i++) {
         var parent = population[i].ifs.clone();
-        parent.mutate(0.2);
+        parent.mutate((1 - population[i].fitness / 100) * 2);
         offspring.push(parent);
     }
     
