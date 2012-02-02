@@ -144,9 +144,10 @@ Ifs.prototype.crossover = function(other) {
 
     return new Ifs(newFuncs);
 }
-    
+
 Ifs.prototype.mutate = function(delta) {
     var d2 = delta / 5;
+    
     if (Math.random < d2) {
         this.incr += (Math.random() - 0.5) * delta;
     }
@@ -161,7 +162,7 @@ Ifs.prototype.mutate = function(delta) {
         }
     }
 }
-    
+
 Ifs.prototype.clone = function() {
     return parseIfs(this.serialize());
 }
@@ -204,7 +205,8 @@ Ifs.prototype.add = function(image, scale, itDiv) {
     var c = 0;
     var iterations = (w * h * this.funcs.length) / itDiv;
     scale = scale / this.funcs.length;
-    for (i=0; i < iterations; i++) {
+    
+    for (var i=0; i < iterations; i++) {
         var fidx = Math.floor(Math.random() * this.funcs.length);
         var func = this.funcs[fidx];
 
