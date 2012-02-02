@@ -12,73 +12,73 @@ function Image(w, h, pixels) {
     } else {
         this.pixels = pixels;
     }
-    
-    this.paint = function(canvas) {
-        canvas.width = this.width;
-        canvas.height = this.height;
-        var w = this.width;
-        var h = this.height;
-        
-        var ctx = canvas.getContext("2d");
-        var cd = ctx.createImageData(this.width, this.height);
-        var cdd = cd.data;
-        
-        for (var y=0; y < h; y++) {
-            var off = y * w;
-                    
-            for (var x=0; x < w; x++) {
-                var idx = off + x;
-                var d = this.pixels[idx];
-                var coff = (y * w + x) * 4;
-                
-                cdd[coff + 0] = d * 255;
-                cdd[coff + 1] = d * 255;
-                cdd[coff + 2] = d * 255;
-                cdd[coff + 3] = 255;
-            }
+}
+
+Image.prototype.paint = function(canvas) {
+    canvas.width = this.width;
+    canvas.height = this.height;
+    var w = this.width;
+    var h = this.height;
+
+    var ctx = canvas.getContext("2d");
+    var cd = ctx.createImageData(this.width, this.height);
+    var cdd = cd.data;
+
+    for (var y=0; y < h; y++) {
+        var off = y * w;
+
+        for (var x=0; x < w; x++) {
+            var idx = off + x;
+            var d = this.pixels[idx];
+            var coff = (y * w + x) * 4;
+
+            cdd[coff + 0] = d * 255;
+            cdd[coff + 1] = d * 255;
+            cdd[coff + 2] = d * 255;
+            cdd[coff + 3] = 255;
         }
-        
-        ctx.putImageData(cd, 0, 0);
     }
-    
-    this.similarity = function(img) {
-        var w = this.width;
-        var h = this.height;
-                
-        var diff = 0;
-                
-        for (var y=0; y < h; y++) {
-            var off = y * w;
-                    
-            for (var x=0; x < w; x++) {
-                var idx = off + x;
-                var d = this.pixels[idx] - img.pixels[idx];
-                diff += d * d;
-            }
+
+    ctx.putImageData(cd, 0, 0);
+}
+
+Image.prototype.similarity = function(img) {
+    var w = this.width;
+    var h = this.height;
+
+    var diff = 0;
+
+    for (var y=0; y < h; y++) {
+        var off = y * w;
+
+        for (var x=0; x < w; x++) {
+            var idx = off + x;
+            var d = this.pixels[idx] - img.pixels[idx];
+            diff += d * d;
         }
-        
-        var maxDiff = w * h;
-        return (1 - (diff / maxDiff)) * 100;
     }
-    
-    this.serialize = function() {
-        var result = "";
-        
-        result += this.width;
-        result += ",";
-        result += this.height;
-        result += ",";
-        
-        for (var i=0; i < this.width * this.height; i++) {
-            result += this.pixels[i];
-            
-            if (i < (this.width * this.height) - 1) {
-                result += ",";
-            }
+
+    var maxDiff = w * h;
+    return (1 - (diff / maxDiff)) * 100;
+}
+
+Image.prototype.serialize = function() {
+    var result = "";
+
+    result += this.width;
+    result += ",";
+    result += this.height;
+    result += ",";
+
+    for (var i=0; i < this.width * this.height; i++) {
+        result += this.pixels[i];
+
+        if (i < (this.width * this.height) - 1) {
+            result += ",";
         }
-        
-        return result;
     }
+
+    return result;
 }
 
 function parseImage(imgString) {
@@ -120,7 +120,6 @@ function canvasToImage(canvas) {
     
     return new Image(w, h, pixels);
 }
-
 
 /*
  * ifs functions
