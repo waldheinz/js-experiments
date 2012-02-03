@@ -17,7 +17,7 @@ function Image(w, h, pixels) {
 Image.prototype.clamp = function() {
     var data = this.pixels;
     
-    for (i=0; i < data.length; i++) {
+    for (var i=0; i < data.length; i++) {
         data[i] = Math.max(0, Math.min(1, data[i]));
     }
 }
@@ -158,16 +158,18 @@ Ifs.prototype.crossover = function(other) {
 Ifs.prototype.mutate = function(delta) {
     var d2 = delta / 5;
     
-    if (Math.random < d2) {
-        this.incr += (Math.random() - 0.5) * delta;
-    }
-
     for (var func=0; func < this.funcs.length; func++) {
         var f = this.funcs[func];
+        
+        if (Math.random() < (delta / 10)) {
+            this.funcs[func] = randomFunc();
+        } else {
+            for (var c=0; c < f.length; c++) {
 
-        for (var c=0; c < f.length; c++) {
-            if (Math.random() < d2) {
-                f[c] += (Math.random() - 0.5) * delta;
+
+                if (Math.random() < d2) {
+                    f[c] += (Math.random() - 0.5) * delta;
+                }
             }
         }
     }
@@ -214,9 +216,9 @@ Ifs.prototype.add = function(image, itDiv) {
     var x = 0;
     var y = 0;
     var c = 0;
-    var q = 200;
+    var q = 100;
     var iterations = w * h * q;
-    var ignored = iterations / 20;
+    var ignored = iterations / 100;
     var scale = 1 / (q * itDiv);
     
     for (var i=0; i < iterations; i++) {
@@ -267,16 +269,23 @@ function randomIfs(fCount) {
     var ifs = Array();
     
     for (var i=0; i < fCount; i++) {
-        var func = Array();
-        
-        for (var j=0; j < COEFF_COUNT; j++) {
-            func.push(Math.random() - 0.5);
-        }
-        
-        ifs.push(func);
+        ifs.push(randomFunc());
     }
     
     return new Ifs(ifs);
+}
+
+/**
+ * Creates one random function for an IFS.
+ */
+function randomFunc() {
+    var func = Array();
+        
+    for (var j=0; j < COEFF_COUNT; j++) {
+        func.push((Math.random() - 0.5) * 0.8);
+    }
+    
+    return func;
 }
 
 /*

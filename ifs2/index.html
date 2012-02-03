@@ -184,6 +184,12 @@
                         $("#bestIfsJson").val(JSON.stringify(ifsBest, null, 3));
                         break;
                         
+                    case "bestFitness":
+                        $('#bestFitness').
+                            text("Best is " + parseFloat(param).toFixed(2) +
+                                 "%, found at " + new Date() + ".");
+                        break;
+                        
                     default:
                         appendLog("worker: UNKNOWN COMMAND \"" + cmd + "\"");
                 }
@@ -249,9 +255,9 @@
         </p>
 
         <h3>Population Fitness</h3>
-
+        <p><div id="bestFitness">---</div></p>
         <div id="statsPlot" style="width:600px;height:200px;"></div>
-
+        
         <h3>Logging</h3>
         <p>
             <textarea id="log" cols="80" rows="15"></textarea>

@@ -1,7 +1,7 @@
 
 importScripts("ifsLib.js");
 
-var FUNC_COUNT = 200;
+var FUNC_COUNT = 100;
 
 var targetImage = null;
 var baseIfs = null;
@@ -129,8 +129,9 @@ function evalIfs(ifs) {
         bestFitness = fit;
         reportImprovement(img);
         reportBestIfs(bestIfs);
+        reportFitness(fit);
     } else {
-        reportProgress(img);
+//        reportProgress(img);
     }
     
     return new Evaluated(ifs, fit);
@@ -149,6 +150,10 @@ function reportStats(pop, gen) {
     
     self.postMessage(
         "stats " + gen + "#" + min + '#' + avg + "#" + max);
+}
+
+function reportFitness(fit) {
+    self.postMessage("bestFitness " + fit);
 }
 
 function reportBestIfs(ifs) {
