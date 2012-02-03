@@ -1,7 +1,7 @@
 
 importScripts("ifsLib.js");
 
-var FUNC_COUNT = 100;
+var FUNC_COUNT = 200;
 
 var targetImage = null;
 var baseIfs = null;
@@ -74,12 +74,18 @@ function oneGeneration() {
     }
     
     /* evaluate offspring */
+    var start = new Date();
     
     var evalOff = new Array();
     for (i=0; i < offspring.length; i++) {
-        var ifs = offspring[i];
-        evalOff.push(evalIfs(ifs));
+        evalOff.push(evalIfs(offspring[i]));
     }
+    
+    var end = new Date();
+    var timeDiff = (end.getTime() - start.getTime()) / 1000;
+    
+    log("evaluated " + evalOff.length + " ifs in " + timeDiff + "s (" +
+        (evalOff.length / timeDiff).toFixed(2) + " per second)");
     
     var all = evalOff.concat(population);
     sortEvaluated(all);

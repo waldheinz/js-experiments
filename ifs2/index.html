@@ -64,14 +64,14 @@
             function updatePlot() {
                 $.plot($("#statsPlot"), [
                     {
-                        label   : "min",
-                        data    : statsDataMin
+                        label   : "max",
+                        data    : statsDataMax
                     }, {
                         label   : "avg",
                         data    : statsDataAvg
                     }, {
-                        label   : "max",
-                        data    : statsDataMax
+                        label   : "min",
+                        data    : statsDataMin,
                     }
                 ], {
                     legend      : { position : "se" }
