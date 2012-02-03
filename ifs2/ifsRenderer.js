@@ -37,14 +37,14 @@ self.onmessage = function(e) {
 function doRender(iterations) {
     self.postMessage("renderStarted");
     
-    var scale = 1;
-    
     for (var pass=0; pass < iterations; pass++) {
-        ifs.add(image, scale, iterations);
+        ifs.add(image, iterations);
         reportPassDone(image);
         reportProgress((100 * (pass+1)) / iterations);
     }
     
+    image.clamp();
+    reportPassDone(image);
     self.postMessage("renderDone");
 }
 

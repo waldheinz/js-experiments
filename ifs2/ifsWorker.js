@@ -1,7 +1,7 @@
 
 importScripts("ifsLib.js");
 
-var FUNC_COUNT = 50;
+var FUNC_COUNT = 100;
 
 var targetImage = null;
 var baseIfs = null;
@@ -115,6 +115,7 @@ function Evaluated(ifs, fitness) {
 function evalIfs(ifs) {
     var img = new Image(targetImage.width, targetImage.height);
     ifs.draw(img);
+    
     var fit = img.similarity(targetImage);
     
     if (fit > bestFitness) {

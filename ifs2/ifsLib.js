@@ -14,7 +14,17 @@ function Image(w, h, pixels) {
     }
 }
 
+Image.prototype.clamp = function() {
+    var data = this.pixels;
+    
+    for (i=0; i < data.length; i++) {
+        data[i] = Math.max(0, Math.min(1, data[i]));
+    }
+}
+
 Image.prototype.paint = function(canvas) {
+    this.clamp();
+    
     canvas.width = this.width;
     canvas.height = this.height;
     var w = this.width;
@@ -189,10 +199,11 @@ Ifs.prototype.draw = function(image) {
     /* reset image to black */
     var data = new Float32Array(image.width * image.height);
     image.pixels = data;
-    this.add(image, 1, 1);
+    this.add(image, 1);
+    image.clamp();
 }
 
-Ifs.prototype.add = function(image, scale, itDiv) {
+Ifs.prototype.add = function(image, itDiv) {
     var w = image.width;
     var h = image.height;         
     var dx = w / 2;
@@ -203,8 +214,10 @@ Ifs.prototype.add = function(image, scale, itDiv) {
     var x = 0;
     var y = 0;
     var c = 0;
-    var iterations = (w * h * this.funcs.length) / itDiv;
-    scale = scale / this.funcs.length;
+    var q = 100;
+    var iterations = w * h * q;
+    var ignored = iterations / 20;
+    var scale = 1 / (q * itDiv);
     
     for (var i=0; i < iterations; i++) {
         var fidx = Math.floor(Math.random() * this.funcs.length);
@@ -215,14 +228,13 @@ Ifs.prototype.add = function(image, scale, itDiv) {
         c      = func[8] * x + func[9] * y + func[10] * c + func[11];
         x = tx;
         y = ty;
-        if (i < 100) continue;
-
+        if (i < ignored) continue;
+        
         var px = Math.floor(x * w + dx);
         var py = Math.floor(y * h + dy);
 
         if (px >= 0 && px < w && py >= 0 && py < h) {
-            var off = (px + py * w);
-            data[off] += c * scale;
+            data[px + py * w] += c * scale;
         }
     }
 }
@@ -253,13 +265,12 @@ function parseIfs(ifsString) {
 
 function randomIfs(fCount) {
     var ifs = Array();
-    var s = 0.10 * Math.sqrt(fCount);
-
+    
     for (var i=0; i < fCount; i++) {
         var func = Array();
         
         for (var j=0; j < COEFF_COUNT; j++) {
-            func.push((Math.random() - 0.5) * s);
+            func.push(Math.random() - 0.5);
         }
         
         ifs.push(func);
