@@ -26,7 +26,8 @@ YUV.prototype.toRGB = function() {
     var v1 = (this.v / 255) * YUV.vmax * 2 - YUV.vmax;
     
     var r = y1 + v1 * (1 - YUV.wr) / YUV.vmax;
-    var g = y1 - u1 * (YUV.wb * (1 - YUV.wb)) / (YUV.umax * YUV.wg) - v1 * (YUV.wr * (1 - YUV.wr) / (YUV.vmax * YUV.wg));
+    var g = y1 - u1 * (YUV.wb * (1 - YUV.wb)) / (YUV.umax * YUV.wg) -
+                 v1 * (YUV.wr * (1 - YUV.wr)  / (YUV.vmax * YUV.wg));
     var b = y1 + u1 * (1 - YUV.wb) / YUV.umax;
     
     return new RGB(r * 255, g * 255, b * 255);
@@ -60,7 +61,7 @@ function Image(w, h, chn, colorSpace) {
         this.channels = [gray];
         
         for (var i=0; i < w*h; i++) {
-            gray[i] = 0; //Math.floor(Math.random() * 255);
+            gray[i] = Math.floor(Math.random() * 255);
         }
     } else {
         this.channels = chn;

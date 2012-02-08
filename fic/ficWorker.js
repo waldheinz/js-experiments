@@ -34,7 +34,13 @@ self.onmessage = function(e) {
             
         case "start":
             log("starting compression");
-            doCompress();
+            
+            try {
+                doCompress();
+            } catch (ex) {
+                log("FAILED: " + ex);
+            }
+            
             break;
             
         default:

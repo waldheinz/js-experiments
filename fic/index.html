@@ -143,7 +143,9 @@
                 log("starting...");
                 var worker = new Worker('ficWorker.js');
                 worker.onmessage = handleWorkerMessage;
-                
+                worker.onerror = function(err) {
+                    log(err);
+                };
                 /* choose POT sized region to actually work on */
                 
                 var cspace = ($('#grayCb').attr('checked')) ? "gray" : "yuv";
