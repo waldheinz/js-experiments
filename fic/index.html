@@ -3,7 +3,7 @@
     <head>
         <title>Fractal Image Compression</title>
         <link rel="stylesheet" type="text/css" href="style.css" />
-        <script src="../js/jquery.min.js"></script>
+        <script src="../js/jquery-1.7.1.min.js"></script>
         <script src="imgLib.js"></script>
         <script src="fic.js"></script>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -81,23 +81,28 @@
             function init() {
                 $('#sourceCanvas').click(showHowItWorks);
                 
-                // jQuery creates it's own event object, and it doesn't have a
-                // dataTransfer property yet. This adds dataTransfer to the event object.
-                jQuery.event.props.push('dataTransfer');
+                $('#sourceImage').bind('dragenter dragexit dragover', function(evt) {
+                    evt.stopPropagation();
+                    evt.preventDefault();
+                    evt.originalEvent.dataTransfer.dropEffect = 'copy';
+                });
                 
-                $('#sourceImage').bind('dragenter dragexit dragover', false);
                 $('#sourceImage').bind('drop', function(evt) {
                     evt.stopPropagation();
                     evt.preventDefault();
-
-                    var files = evt.dataTransfer.files;
+                    
+                    var files = evt.originalEvent.dataTransfer.files;
                     var file = files[0];
-
                     var reader = new FileReader();
+                    
                     reader.onload = function(rEvt) {
                         $('#sourceImage').attr('src', rEvt.target.result);
                     };
-
+                    
+                    reader.onerror = function(eevt) {
+                        alert("error loading file");
+                    };
+                    
                     reader.readAsDataURL(file);
                 });
             }
