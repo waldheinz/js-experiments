@@ -120,19 +120,15 @@ Z80.prototype.step = function() {
             switch (z) {
                 case 0:
                     /* RET cc[y] (conditional return) */
-                    switch (y) {
-                        case 1: /* RET NZ */
-                            if (!this.flag.zero) {
-                                this.regPC = this.pop();
-                                this.instTStates += 11;
-                            } else {
-                                this.instTStates += 5;
-                            }
-                            
-                            return;
-                            
-                        default:throw "unknown condition " + y;
+                    if (this.testCondition(y)) {
+                        this.regPC = this.pop();
+                        this.instTStates += 11;
+                    } else {
+                        this.instTStates += 5;
                     }
+                            
+                    return;
+                    
                 case 3:
                     switch (y) {
                         case 0: /* JP nn */
@@ -151,12 +147,25 @@ Z80.prototype.step = function() {
                     
                     throw "internal error";
                     
+                case 4: /* conditional CALL */
+                    var nn = this.nextWord();
+                    
+                    if (testCondition(y)) {
+                        this.push(this.regPC);
+                        this.regPC = nn;
+                        this.instTStates += 17;
+                    } else {
+                        this.instTStates += 10;
+                    }
+                    
+                    return;
+                    
                 case 5:
                     if (q == 0) {
-                        
+                        throw "unimplemented";
                     } else {
                         /* CALL nn */
-                        var nn = this.nextWord();
+                        nn = this.nextWord();
                         this.push(this.regPC);
                         this.regPC = nn;
                         this.instTStates += 17;
@@ -169,14 +178,21 @@ Z80.prototype.step = function() {
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
 }
 
+Z80.prototype.testCondition = function(c) {
+    switch (c) {
+        case 1 : return this.flag.zero;
+        default : throw "unknown condition " + c;
+    }
+}
+
 /**
  * Reads a 8-bit register.
  */
 Z80.prototype.getReg = function(r) {
     switch (r) {
-        case 0  :return this.regB;
-        case 7  :return this.regA;
-        default :throw "unknown register " + r;
+        case 0  : return this.regB;
+        case 7  : return this.regA;
+        default : throw "unknown register " + r;
     }
 }
 
@@ -187,9 +203,9 @@ Z80.prototype.setReg = function(r, val) {
     val = val & 0xff;
     
     switch (r) {
-        case 0  : this.regB = val; break;
-        case 3  : this.regE = val; break;
-        default :throw "unknown register " + r;
+        case 0  : this.regB = val;break;
+        case 3  : this.regE = val;break;
+        default : throw "unknown register " + r;
     }
 }
 
@@ -223,6 +239,9 @@ Z80.prototype.doALU = function(op, val) {
     }
 }
 
+/**
+ * Calculates and updates the parity flag.
+ */
 Z80.prototype.updateParity = function(val) {
     var cnt = 0; /* number of 1s */
     
