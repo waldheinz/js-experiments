@@ -16,13 +16,14 @@ function Z80(mem) {
     
     /* flags */
     this.flag = {
-        sign    : false,
-        zero    : false,
-        half    : false,
-        n       : false,
-        carry   : false,
-        three   : false,
-        five    : false
+        sign    : false, /* set if the 2-complement value is negative (copy of MSB) */
+        zero    : false, /* set if the value is zero */
+        half    : false, /* half carry, carry from bit 3 to bit 4 */
+        pv      : false, /* parity or overflow, parity set if even number of bits set; overflow set if the 2-complement result does not fit in the register */
+        n       : false, /* subtract, set if the last operation was a subtraction */
+        carry   : false, /* set if the result did not fit in the register */
+        three   : false, /* undocumented, copy of bit 3 */
+        five    : false  /* undocumented, copy of bit 5 */
     }
     
     /* internal state */
@@ -47,6 +48,7 @@ Z80.prototype.reset = function() {
         sign    : false,
         zero    : false,
         half    : false,
+        pv      : false,
         n       : false,
         carry   : false,
         three   : false,
@@ -98,7 +100,12 @@ Z80.prototype.step = function() {
                     
                 case 4:
                     /* 8-bit INC */
-                    this.setReg(y, this.getReg(y) + 1);
+                    this.setReg(y, this.instInc8(this.getReg(y)));
+                    return;
+                    
+                case 6:
+                    /* 8-bit load immediate */
+                    this.setReg(y, this.nextByte());
                     return;
             }
             
@@ -111,11 +118,21 @@ Z80.prototype.step = function() {
             
         case 3:
             switch (z) {
-//                case 0:
-//                    /* RET cc[y] (conditional return) */
-//                    switch (y) {
-//                        
-//                    }
+                case 0:
+                    /* RET cc[y] (conditional return) */
+                    switch (y) {
+                        case 1: /* RET NZ */
+                            if (!this.flag.zero) {
+                                this.regPC = this.pop();
+                                this.instTStates += 11;
+                            } else {
+                                this.instTStates += 5;
+                            }
+                            
+                            return;
+                            
+                        default:throw "unknown condition " + y;
+                    }
                 case 3:
                     switch (y) {
                         case 0: /* JP nn */
@@ -157,9 +174,9 @@ Z80.prototype.step = function() {
  */
 Z80.prototype.getReg = function(r) {
     switch (r) {
-        case 0  : return this.regB;
-        case 7  : return this.regA;
-        default : throw "unknown register " + r;
+        case 0  :return this.regB;
+        case 7  :return this.regA;
+        default :throw "unknown register " + r;
     }
 }
 
@@ -170,8 +187,9 @@ Z80.prototype.setReg = function(r, val) {
     val = val & 0xff;
     
     switch (r) {
-        case 0 : this.regB = val; break;
-        default : throw "unknown register " + r;
+        case 0  : this.regB = val; break;
+        case 3  : this.regE = val; break;
+        default :throw "unknown register " + r;
     }
 }
 
@@ -186,12 +204,34 @@ Z80.prototype.doALU = function(op, val) {
             this.flag.carry = false;
             this.flag.five  = ((this.regA & BIT[5]) != 0);
             this.flag.three = ((this.regA & BIT[3]) != 0);
+            break;
             
+        case 6: /* OR */
+            this.regA       = (this.regA | val) & 0xFF;
+            this.flag.sign  = ((this.regA & BIT[7]) != 0);
+            this.flag.zero  = (this.regA == 0);
+            this.flag.half  = false;
+            this.flag.n     = false;
+            this.flag.carry = false;
+            this.flag.five  = ((this.regA & BIT[5]) != 0);
+            this.flag.three = ((this.regA & BIT[3]) != 0);
+            this.updateParity(this.regA);
             break;
             
         default:
             throw "unknown op " + op;
     }
+}
+
+Z80.prototype.updateParity = function(val) {
+    var cnt = 0; /* number of 1s */
+    
+    while (val != 0) {
+        cnt++;
+        val &= (val - 1);
+    }
+    
+    this.flag.pv = (cnt & 1);/* if cnt is odd LSB is 1 */ 
 }
 
 /**
@@ -202,6 +242,14 @@ Z80.prototype.push = function(val) {
     this.mem.writeByte(this.regSP, val >> 8);
     this.regSP = (this.regSP - 1) & 0xffff;
     this.mem.writeByte(this.regSP, val & 0xff);
+}
+
+Z80.prototype.pop = function() {
+    var result = this.mem.getByte(this.regSP);
+    this.regSP = (this.regSP + 1) & 0xFFFF;
+    result |= (this.mem.getByte(this.regSP) << 8);
+    this.regSP = (this.regSP + 1) & 0xFFFF;
+    return result;
 }
 
 /**
@@ -233,6 +281,26 @@ Z80.prototype.writeRegPairImm = function(r) {
     }
     
     this.instTStates += 20;
+}
+
+/**
+ * Performs an 8-bit increment, updates the flags and returns the result.
+ */
+Z80.prototype.instInc8 = function(value) {
+    /* determine half-carry flag */
+    var result = (value & 0x0F) + 1;
+    this.flagHalf = ((result & 0xFFFFFFF0) != 0);
+    
+    /* perform calculation */
+    result          = (value & 0xff) + 1;
+    this.flag.sign  = ((result & BIT[7]) != 0);
+    this.flag.zero  = (result == 0);
+    this.flag.pv    = (result != (result & 0xff));
+    this.flag.n     = false;
+    this.flag.five  = ((result & BIT[5]) != 0);
+    this.flag.three = ((result & BIT[3]) != 0);
+    
+    return result & 0xff;
 }
 
 Z80.prototype.nextByte = function() {

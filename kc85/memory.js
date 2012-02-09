@@ -73,7 +73,7 @@ Memory.prototype.getByte = function(addr) {
     if (addr >= 0xe000) {
         return this.caos.getByte(addr - 0xe000);
     } else {
-        throw ("memory read from " + addr);
+        return this.ram.getByte(addr);
     }
 }
 
