@@ -78,11 +78,14 @@ Z80.prototype.step = function() {
     var p = (y >> 1) & 0x3;
     var q = y & 0x01;
     
+    /* prefix bytes */
     switch (op) {
-        /* prefix bytes */
-        case 0xcb: case 0xdd: case 0xed: case 0xfd:
+        case 0xed: 
+            this.stepPrefixED();
+            return;
+            
+        case 0xcb: case 0xdd: case 0xfd:
             throw "prefixed instruction";
-            break;
     }
     
     switch (x) {
@@ -174,7 +177,26 @@ Z80.prototype.step = function() {
             }
     }
 
-    throw ("unknown opcode 0x" + op.toString(2) +
+    throw ("unknown opcode 0x" + op.toString(16) +
+           " (x=" + x + ", y=" + y + ", z=" + z + ")");
+}
+
+Z80.prototype.stepPrefixED = function() {
+    var op = this.nextByte();
+    var x = (op >> 6) & 0x03;
+    var y = (op >> 3) & 0x07;
+    var z = op & 0x07;
+    var q = y & 0x01;
+    
+    switch (x) {
+        case 0: case 3:
+            throw "unimplemented invalid";
+            
+        case 1:
+            
+    }
+    
+    throw ("unknown opcode 0xED" + op.toString(16) +
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
 }
 
