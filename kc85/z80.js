@@ -281,6 +281,20 @@ Z80.prototype.doALU = function(op, val) {
             this.updateParity(this.regA);
             break;
             
+        case 7: /* CP */
+            var result = this.regA - val;
+            var m      = this.regA ^ val ^ result;
+
+            this.flag.sign  = ((result & BIT[7]) != 0);
+            this.flag.zero  = ((result & 0xFF) == 0);
+            this.flag.five  = ((val & BIT[5]) != 0);
+            this.flag.half  = ((m & 0x10) != 0);
+            this.flag.three = ((val & BIT[3]) != 0);
+            this.flag.pv    = ((((m >> 1) ^ m) & 0x80) != 0);
+            this.flag.n     = true;
+            this.flag.carry = ((m & 0x100) != 0);
+            break;
+            
         default:
             throw "unknown op " + op;
     }
