@@ -291,6 +291,18 @@ Z80.prototype.setReg = function(r, val) {
 
 Z80.prototype.doALU = function(op, val) {
     switch(op) {
+        case 4: /* AND */
+            this.regA       = (this.regA & val) & 0xFF;
+            this.flag.sign  = ((this.regA & BIT[7]) != 0);
+            this.flag.zero  = (this.regA == 0);
+            this.flag.half  = true;
+            this.flag.n     = false;
+            this.flag.carry = false;
+            this.flag.five  = ((this.regA & BIT[5]) != 0);
+            this.flag.three = ((this.regA & BIT[3]) != 0);
+            this.updateParity(this.regA);
+            break;
+            
         case 5: /* XOR */
             this.regA       = (this.regA ^ val) & 0xFF;
             this.flag.sign  = ((this.regA & BIT[7]) != 0);
@@ -300,6 +312,7 @@ Z80.prototype.doALU = function(op, val) {
             this.flag.carry = false;
             this.flag.five  = ((this.regA & BIT[5]) != 0);
             this.flag.three = ((this.regA & BIT[3]) != 0);
+            this.updateParity(this.regA);
             break;
             
         case 6: /* OR */
