@@ -234,7 +234,9 @@ Z80.prototype.stepPrefixED = function() {
                     
                 case 1:
                     /* output to port with 16-bit address */
-                    this.writePort((y != 6) ? this.getReg(y) : 0);
+                    this.iosys.writeByte(
+                        (this.regB << 8) | this.regC,
+                        (y != 6) ? this.getReg(y) : 0);
                     this.instTStates += 12;
                     return;
             }
@@ -258,10 +260,6 @@ Z80.prototype.readPort = function() {
     this.flag.three = ((result & BIT[3]) != 0);
     this.updateParity(result);
     return result;
-}
-
-Z80.prototype.writePort = function(val) {
-    throw "unimplemented";
 }
 
 Z80.prototype.testCondition = function(c) {
@@ -303,6 +301,8 @@ Z80.prototype.setReg = function(r, val) {
     
     switch (r) {
         case 0  :this.regB = val;break;
+        case 1  :this.regC = val;break;
+        case 2  :this.regD = val;break;
         case 3  :this.regE = val;break;
         case 4  :this.regH = val;break;
         case 5  :this.regL = val;break;
@@ -311,7 +311,7 @@ Z80.prototype.setReg = function(r, val) {
             this.instTStates += 3;
             break;
         case 7  :this.regA = val;break;
-        default :throw "write to unknown register " + r;
+        default :throw "write to invalid register " + r;
     }
 }
 
