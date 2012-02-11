@@ -133,6 +133,15 @@ Z80.prototype.step = function() {
             
             break;
             
+        case 1:
+            if (z != 6) {
+                /* 8-bit loading LD r[y], r[z] */
+                this.setReg(y, this.getReg(z));
+                this.instTStates += 4;
+            } else {
+                throw "unimplemented";
+            }
+            
         case 2:
             /* ALU operations */
             this.doALU(y, this.getReg(z));
@@ -172,7 +181,7 @@ Z80.prototype.step = function() {
                 case 4: /* conditional CALL */
                     var nn = this.nextWord();
                     
-                    if (testCondition(y)) {
+                    if (this.testCondition(y)) {
                         this.push(this.regPC);
                         this.regPC = nn;
                         this.instTStates += 17;
@@ -247,9 +256,9 @@ Z80.prototype.readPort = function() {
 
 Z80.prototype.testCondition = function(c) {
     switch (c) {
-        case 0  : return !this.flag.zero;
-        case 1  : return this.flag.zero;
-        default : throw "unknown condition " + c;
+        case 0  :return !this.flag.zero;
+        case 1  :return this.flag.zero;
+        default :throw "unknown condition " + c;
     }
 }
 
@@ -274,6 +283,7 @@ Z80.prototype.setReg = function(r, val) {
     switch (r) {
         case 0  :this.regB = val;break;
         case 3  :this.regE = val;break;
+        case 4  :this.regH = val;break;
         case 7  :this.regA = val;break;
         default :throw "write to unknown register " + r;
     }
@@ -396,13 +406,13 @@ Z80.prototype.writeRegPairImm = function(r) {
  */
 Z80.prototype.instInc8 = function(value) {
     /* determine half-carry flag */
-    var result = (value & 0x0F) + 1;
-    this.flagHalf = ((result & 0xFFFFFFF0) != 0);
+    var result = (value & 0x0f) + 1;
+    this.flag.half = ((result & 0xFFFFFFF0) != 0);
     
     /* perform calculation */
     result          = (value & 0xff) + 1;
     this.flag.sign  = ((result & BIT[7]) != 0);
-    this.flag.zero  = (result == 0);
+    this.flag.zero  = ((result & 0xff) == 0);
     this.flag.pv    = (result != (result & 0xff));
     this.flag.n     = false;
     this.flag.five  = ((result & BIT[5]) != 0);

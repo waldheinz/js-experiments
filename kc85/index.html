@@ -3,19 +3,30 @@
     <head>
         <title>KC85</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <script src="../js/jquery-1.7.1.min.js"></script>
         <script src="z80.js"></script>
         <script src="memory.js"></script>
         <script src="iosys.js"></script>
     </head>
     
     <body>
+        CPU State: <pre id="cpuState">(nothing)</pre>
         <script>
             var mem = new Memory();
             var iosys = new IOSys();
             var cpu = new Z80(mem, iosys);
             
+            step = function() {
+                $('#cpuState').text(cpu.toString());
+                cpu.step();
+//                console.log();
+                setTimeout(step, 0);
+            }
+            
             mem.load(function () {
-                cpu.run();
+//                cpu.run();
+                cpu.reset();
+                step();
             });
         </script>
     </body>
