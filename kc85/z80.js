@@ -231,6 +231,12 @@ Z80.prototype.stepPrefixED = function() {
                     } else {
                         throw "unimplemented";
                     }
+                    
+                case 1:
+                    /* output to port with 16-bit address */
+                    this.writePort((y != 6) ? this.getReg(y) : 0);
+                    this.instTStates += 12;
+                    return;
             }
     }
     
@@ -252,6 +258,10 @@ Z80.prototype.readPort = function() {
     this.flag.three = ((result & BIT[3]) != 0);
     this.updateParity(result);
     return result;
+}
+
+Z80.prototype.writePort = function(val) {
+    throw "unimplemented";
 }
 
 Z80.prototype.testCondition = function(c) {
