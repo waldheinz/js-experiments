@@ -173,6 +173,37 @@ Z80.prototype.step = function() {
                             
                     return;
                     
+                case 1:
+                    if (q == 0) {
+                        /* POP */
+                        var val = this.pop();
+                        
+                        switch (p) {
+                            case 0:
+                                this.regB = (val >> 8) & 0xff;
+                                this.regC = val & 0xff;
+                                break;
+                                
+                            case 1:
+                                this.regD = (val >> 8) & 0xff;
+                                this.regE = val & 0xff;
+                                break;
+                                
+                            case 3:
+                                this.regH = (val >> 8) & 0xff;
+                                this.regL = val & 0xff;
+                                break;
+                                
+                            default:
+                                throw "unimplemented AF pair " + p;
+                        }
+                        
+                        this.instTStates += 10;
+                        return;
+                    } else {
+                        throw "unimplemented";
+                    }
+                    
                 case 3:
                     switch (y) {
                         case 0: /* JP nn */
