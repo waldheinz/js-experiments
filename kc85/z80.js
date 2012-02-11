@@ -112,6 +112,7 @@ Z80.prototype.step = function() {
                         
                         return;
                     }
+                    
                 case 1:
                     if (q == 0) {
                         /* LD rp[p], nn */
@@ -120,6 +121,19 @@ Z80.prototype.step = function() {
                         throw "unimplemented";
                     }
                     
+                    return;
+                    
+                case 3:
+                    /* 16-bit INC / DEC */
+                    if (q == 0) {
+                        /* INC */
+                        this.setRegPair(p, this.getRegPair(p) + 1);
+                    } else {
+                        /* DEC */
+                        this.setRegPair(p, this.getRegPair(p) - 1);
+                    }
+                    
+                    this.instTStates += 6;
                     return;
                     
                 case 4:
@@ -451,12 +465,17 @@ Z80.prototype.pop = function() {
     return result;
 }
 
-/**
- * Write register pair with immediate value.
- */
-Z80.prototype.writeRegPairImm = function(r) {
-    var val = this.nextWord();
-    
+Z80.prototype.getRegPair = function(rp) {
+    switch (rp) {
+        case 0:return this.getRegBC();
+        case 1:return this.getRegDE();
+        case 2:return this.getRegHL();
+        case 3:return this.regSP;
+        default:throw "invalid register pair " + rp;
+    }
+}
+
+Z80.prototype.setRegPair = function(r, val) {
     switch (r) {
         case 0: /* BC */
             this.regB = (val >> 8) & 0xFF;
@@ -480,7 +499,14 @@ Z80.prototype.writeRegPairImm = function(r) {
         default:
             throw "illegal register pair " + r;
     }
-    
+}
+
+/**
+ * Write register pair with immediate value.
+ */
+Z80.prototype.writeRegPairImm = function(r) {
+    var val = this.nextWord();
+    this.setRegPair(r, val);
     this.instTStates += 20;
 }
 
