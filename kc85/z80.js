@@ -201,7 +201,17 @@ Z80.prototype.step = function() {
                         this.instTStates += 10;
                         return;
                     } else {
-                        throw "unimplemented";
+                        switch (p) {
+                            case 0: /* RET */
+                                this.regPC = this.pop();
+                                this.instTStates += 10;
+                                break;
+                                
+                            default:
+                                throw "unimplemented p=" + p;
+                        }
+                        
+                        return;
                     }
                     
                 case 3:
