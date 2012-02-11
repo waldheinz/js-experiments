@@ -11,6 +11,8 @@ function Z80(mem, iosys) {
     this.regC = 0x0;
     this.regD = 0x0;
     this.regE = 0x0;
+    this.regH = 0x0;
+    this.regL = 0x0;
     
     this.regPC = 0x0; /* program counter */
     this.regSP = 0x0; /* stack pointer */
@@ -41,6 +43,8 @@ Z80.prototype.reset = function() {
     this.regC = 0x0;
     this.regD = 0x0;
     this.regE = 0x0;
+    this.regH = 0x0;
+    this.regL = 0x0;
     
     this.regPC = 0xF000;
     this.regSP = 0x0;
@@ -92,6 +96,20 @@ Z80.prototype.step = function() {
     switch (x) {
         case 0:
             switch (z) {
+                case 0:
+                    if (y >= 4 && y <= 7) {
+                        /* relative conditional jump (JR cc[y-4], d */
+                        var d = this.nextByte();
+                        
+                        if (this.testCondition(y - 4)) {
+                            this.doJmpRel(d);
+                            this.instTStates += 12;
+                        } else {
+                            this.instTStates += 7;
+                        }
+                        
+                        return;
+                    }
                 case 1:
                     if (q == 0) {
                         /* LD rp[p], nn */
@@ -211,6 +229,10 @@ Z80.prototype.stepPrefixED = function() {
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
 }
 
+Z80.prototype.doJmpRel = function(off) {
+    this.regPC = computeRelAddr(this.regPC, off);
+}
+
 Z80.prototype.readPort = function() {
     var result = this.iosys.readByte((this.regB << 8) | this.regC);
     this.flag.sign  = ((result & BIT[7]) != 0);
@@ -225,8 +247,9 @@ Z80.prototype.readPort = function() {
 
 Z80.prototype.testCondition = function(c) {
     switch (c) {
-        case 1 :return this.flag.zero;
-        default :throw "unknown condition " + c;
+        case 0  : return !this.flag.zero;
+        case 1  : return this.flag.zero;
+        default : throw "unknown condition " + c;
     }
 }
 
@@ -235,10 +258,10 @@ Z80.prototype.testCondition = function(c) {
  */
 Z80.prototype.getReg = function(r) {
     switch (r) {
-        case 0  : return this.regB; break;
-        case 3  : return this.regE; break;
-        case 7  : return this.regA; break;
-        default : throw "read from unknown register " + r;
+        case 0  :return this.regB;break;
+        case 3  :return this.regE;break;
+        case 7  :return this.regA;break;
+        default :throw "read from unknown register " + r;
     }
 }
 
@@ -249,10 +272,10 @@ Z80.prototype.setReg = function(r, val) {
     val = val & 0xff;
     
     switch (r) {
-        case 0  : this.regB = val; break;
-        case 3  : this.regE = val; break;
-        case 7  : this.regA = val; break;
-        default : throw "write to unknown register " + r;
+        case 0  :this.regB = val;break;
+        case 3  :this.regE = val;break;
+        case 7  :this.regA = val;break;
+        default :throw "write to unknown register " + r;
     }
 }
 
@@ -351,6 +374,11 @@ Z80.prototype.writeRegPairImm = function(r) {
             this.regE = val & 0xFF;
             break;
             
+        case 2:
+            this.regH = (val >> 8) & 0xFF;
+            this.regL = val & 0xFF;
+            break;
+            
         case 3:
             /* SP */
             this.regSP = val;
@@ -403,5 +431,19 @@ Z80.prototype.toString = function() {
         ", C=0x" + this.regC.toString(16) +
         ", D=0x" + this.regD.toString(16) +
         ", E=0x" + this.regE.toString(16) +
+        ", H=0x" + this.regH.toString(16) +
+        ", L=0x" + this.regL.toString(16) +
         "}";
+}
+
+/**
+ * Find the relative address given a base and an offset. The offset is
+ * interpreted as an 8-bit signed value (-128 .. +127).
+ */
+function computeRelAddr(base, off) {
+    if ((off & BIT[7]) != 0) {
+        off = (off & 0x7f) - 128;
+    }
+    
+    return ((base + off) & 0xffff);
 }
