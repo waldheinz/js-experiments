@@ -31,6 +31,7 @@ function Z80(mem, iosys) {
     
     /* internal state */
     this.instTStates = 0;
+    this.interruptMode = 0;
     
     this.reset();
 }
@@ -61,6 +62,7 @@ Z80.prototype.reset = function() {
     }
     
     this.instTStates = 0;
+    this.interruptMode = 0;
 }
 
 Z80.prototype.run = function() {
@@ -134,13 +136,10 @@ Z80.prototype.step = function() {
             break;
             
         case 1:
-            if (z != 6) {
-                /* 8-bit loading LD r[y], r[z] */
-                this.setReg(y, this.getReg(z));
-                this.instTStates += 4;
-            } else {
-                throw "unimplemented";
-            }
+            /* 8-bit loading LD r[y], r[z] */
+            this.setReg(y, this.getReg(z));
+            this.instTStates += 4;
+            return;
             
         case 2:
             /* ALU operations */
@@ -193,15 +192,24 @@ Z80.prototype.step = function() {
                     
                 case 5:
                     if (q == 0) {
-                        throw "unimplemented";
+                        /* PUSH rp2[p] */
+                        switch (p) {
+                            case 0:this.push(this.getRegBC());break;
+                            case 1:this.push(this.getRegDE());break;
+                            case 2:this.push(this.getRegHL());break;
+                            default:throw "unimplemented AF pair";
+                        }
+                        
+                        this.instTStates += 11;
                     } else {
                         /* CALL nn */
                         nn = this.nextWord();
                         this.push(this.regPC);
                         this.regPC = nn;
                         this.instTStates += 17;
-                        return;
                     }
+                    
+                    return;
             }
     }
 
@@ -239,10 +247,28 @@ Z80.prototype.stepPrefixED = function() {
                         (y != 6) ? this.getReg(y) : 0);
                     this.instTStates += 12;
                     return;
+                    
+                case 6:
+                    /* set interrupt mode (IM n) */
+                    switch (y) {
+                        case 0:
+                            this.interruptMode = 0;
+                            break;
+                            
+                        case 3:
+                            this.interruptMode = 2;
+                            break;
+                            
+                        default:
+                            throw "don't understand IM " + y;
+                    }
+                    
+                    this.instTStates += 8;
+                    return;
             }
     }
     
-    throw ("unknown opcode 0xED" + op.toString(16) +
+    throw ("unknown opcode 0xed" + op.toString(16) +
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
 }
 
@@ -281,16 +307,12 @@ Z80.prototype.getReg = function(r) {
         case 3  :return this.regE;
         case 4  :return this.regH;
         case 5  :return this.regL;
+        case 6  : /* reads from (HL) memory location */
+            this.instTStates += 3;
+            return this.mem.getByte(this.getRegHL());
         case 7  :return this.regA;
-        default :throw "read from unknown register " + r;
+        default :throw "read from invalid register " + r;
     }
-}
-
-/**
- * Returns the contents of the H and L registers as one 16-bit value.
- */
-Z80.prototype.getRegHL = function() {
-    return ((this.regH << 8) | this.regL) & 0xFFFF;
 }
 
 /**
@@ -313,6 +335,27 @@ Z80.prototype.setReg = function(r, val) {
         case 7  :this.regA = val;break;
         default :throw "write to invalid register " + r;
     }
+}
+
+/**
+ * Returns the BC register pair as one 16-bit value.
+ */
+Z80.prototype.getRegBC = function() {
+    return ((this.regB << 8) | this.regC) & 0xFFFF;
+}
+
+/**
+ * Returns the DE register pair as one 16-bit value.
+ */
+Z80.prototype.getRegDE = function() {
+    return ((this.regD << 8) | this.regE) & 0xFFFF;
+}
+
+/**
+ * Returns the HL register pair as one 16-bit value.
+ */
+Z80.prototype.getRegHL = function() {
+    return ((this.regH << 8) | this.regL) & 0xFFFF;
 }
 
 Z80.prototype.doALU = function(op, val) {
@@ -415,25 +458,22 @@ Z80.prototype.writeRegPairImm = function(r) {
     var val = this.nextWord();
     
     switch (r) {
-        case 0:
-            /* BC */
+        case 0: /* BC */
             this.regB = (val >> 8) & 0xFF;
             this.regC = val & 0xFF;
             break;
             
-        case 1:
-            /* DE */
+        case 1: /* DE */
             this.regD = (val >> 8) & 0xFF;
             this.regE = val & 0xFF;
             break;
             
-        case 2:
+        case 2: /* HL */
             this.regH = (val >> 8) & 0xFF;
             this.regL = val & 0xFF;
             break;
             
-        case 3:
-            /* SP */
+        case 3: /* SP */
             this.regSP = val;
             break;
             
