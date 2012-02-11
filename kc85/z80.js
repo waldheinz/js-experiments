@@ -267,11 +267,22 @@ Z80.prototype.testCondition = function(c) {
  */
 Z80.prototype.getReg = function(r) {
     switch (r) {
-        case 0  :return this.regB;break;
-        case 3  :return this.regE;break;
-        case 7  :return this.regA;break;
+        case 0  :return this.regB;
+        case 1  :return this.regC;
+        case 2  :return this.regD;
+        case 3  :return this.regE;
+        case 4  :return this.regH;
+        case 5  :return this.regL;
+        case 7  :return this.regA;
         default :throw "read from unknown register " + r;
     }
+}
+
+/**
+ * Returns the contents of the H and L registers as one 16-bit value.
+ */
+Z80.prototype.getRegHL = function() {
+    return ((this.regH << 8) | this.regL) & 0xFFFF;
 }
 
 /**
@@ -284,6 +295,11 @@ Z80.prototype.setReg = function(r, val) {
         case 0  :this.regB = val;break;
         case 3  :this.regE = val;break;
         case 4  :this.regH = val;break;
+        case 5  :this.regL = val;break;
+        case 6  : /* writes to (HL) in memory */
+            this.mem.writeByte(this.getRegHL(), val);
+            this.instTStates += 3;
+            break;
         case 7  :this.regA = val;break;
         default :throw "write to unknown register " + r;
     }
