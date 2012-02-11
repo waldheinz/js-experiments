@@ -350,8 +350,28 @@ Z80.prototype.instBlock = function(a, b) {
     var delta = (a == 4) ? 1 : -1;
     
     switch (b) {
-        case 3:
-            /* block OUT instructions */
+        case 0: /* block LD instructions */
+            var rBC = this.getRegBC();
+            var rDE = this.getRegDE();
+            var rHL = this.getRegHL();
+
+            var d = this.mem.getByte(rHL);
+            this.mem.writeByte(rDE, d);
+            this.setRegPair(1, rDE + delta); /* update DE */
+            this.setRegPair(2, rHL + delta); /* update HL */
+            rBC--;
+            setRegBC(rBC);
+            this.flag.pv   = (rBC != 0);
+            this.flag.half = false;
+            this.flag.n    = false;
+            
+            /* undocumented flag changes */
+            d += this.regA;
+            this.flag.five  = ((d & BIT[1]) != 0);
+            this.flag.three = ((d & BIT[3]) != 0);
+            break;
+            
+        case 3: /* block OUT instructions */
             this.regB       = (this.regB - 1) & 0xFF;
             this.flag.sign  = ((this.regB & BIT[7]) != 0);
             this.flag.zero  = (this.regB == 0);

@@ -34,7 +34,7 @@ function RAM(size) {
 
 RAM.prototype.writeByte = function(addr, val) {
     if (addr > this.data.length) {
-        throw "address out of bounds";
+        throw "write address out of bounds : 0x" + addr.toString(16);
     } 
     
     this.data[addr] = val;
