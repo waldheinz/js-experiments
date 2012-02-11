@@ -280,10 +280,55 @@ Z80.prototype.stepPrefixED = function() {
                     this.instTStates += 8;
                     return;
             }
+            
+        case 2:
+            if ((z <= 3) && (y >= 4)) {
+                this.instBlock(y, z);
+                return;
+            } else {
+                throw "invalid instruction";
+            }
     }
     
     throw ("unknown opcode 0xed" + op.toString(16) +
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
+}
+
+/**
+ * All block instructions.
+ */
+Z80.prototype.instBlock = function(a, b) {
+    var repeat = (a > 5);
+    var delta = (a == 4) ? 1 : -1;
+    
+    switch (b) {
+        case 3:
+            /* block OUT instructions */
+            this.regB       = (this.regB - 1) & 0xFF;
+            this.flag.sign  = ((this.regB & BIT[7]) != 0);
+            this.flag.zero  = (this.regB == 0);
+            this.flag.n     = true; /* yes, this does not depend on delta */
+            this.flag.five  = ((this.regB & BIT[5]) != 0);
+            this.flag.three = ((this.regB & BIT[3]) != 0);
+            this.iosys.writeByte(this.getRegBC(),
+                this.mem.getByte(this.getRegHL()));
+            this.setRegPair(2, this.getRegHL() + delta);
+            break;
+            
+        default :throw "b = " + b;
+    }
+    
+    if (repeat) {
+        /* prepare for loop */
+        
+        if (this.flag.zero) {
+            this.instTStates += 16;
+	} else {
+//            incRegR();
+            this.doJmpRel(-2);
+            this.instTStates += 21;
+	}
+    }
 }
 
 Z80.prototype.doJmpRel = function(off) {
