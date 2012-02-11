@@ -139,6 +139,13 @@ Z80.prototype.step = function() {
                 case 4:
                     /* 8-bit INC */
                     this.setReg(y, this.instInc8(this.getReg(y)));
+                    this.instTStates += 4;
+                    return;
+                    
+                case 5:
+                    /* 8-bit DEC */
+                    this.setReg(y, this.instDec8(this.getReg(y)));
+                    this.instTStates += 4;
                     return;
                     
                 case 6:
@@ -610,6 +617,26 @@ Z80.prototype.instInc8 = function(value) {
     this.flag.zero  = ((result & 0xff) == 0);
     this.flag.pv    = (result != (result & 0xff));
     this.flag.n     = false;
+    this.flag.five  = ((result & BIT[5]) != 0);
+    this.flag.three = ((result & BIT[3]) != 0);
+    
+    return result & 0xff;
+}
+
+/**
+ * Performs an 8-bit decrement, updates the flags and returns the result.
+ */
+Z80.prototype.instDec8 = function(value) {
+    /* determine half-carry flag */
+    var result = (value & 0x0f) - 1;
+    this.flag.half = ((result & 0xFFFFFFF0) != 0);
+    
+    /* perform calculation */
+    result          = (value & 0xff) + 1;
+    this.flag.sign  = ((result & BIT[7]) != 0);
+    this.flag.zero  = ((result & 0xff) == 0);
+    this.flag.pv    = (result != (result & 0xff));
+    this.flag.n     = true;
     this.flag.five  = ((result & BIT[5]) != 0);
     this.flag.three = ((result & BIT[3]) != 0);
     
