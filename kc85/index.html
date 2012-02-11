@@ -5,12 +5,14 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <script src="z80.js"></script>
         <script src="memory.js"></script>
+        <script src="iosys.js"></script>
     </head>
     
     <body>
         <script>
             var mem = new Memory();
-            var cpu = new Z80(mem);
+            var iosys = new IOSys();
+            var cpu = new Z80(mem, iosys);
             
             mem.load(function () {
                 cpu.run();

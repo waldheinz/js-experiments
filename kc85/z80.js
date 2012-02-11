@@ -1,8 +1,9 @@
 
 var BIT = [1, 2, 4, 8, 16, 32, 64, 128]
 
-function Z80(mem) {
+function Z80(mem, iosys) {
     this.mem = mem;
+    this.iosys = iosys;
     
     /* registers */
     this.regA = 0x0;
@@ -80,7 +81,7 @@ Z80.prototype.step = function() {
     
     /* prefix bytes */
     switch (op) {
-        case 0xed: 
+        case 0xed:
             this.stepPrefixED();
             return;
             
@@ -193,17 +194,39 @@ Z80.prototype.stepPrefixED = function() {
             throw "unimplemented invalid";
             
         case 1:
-            
+            switch (z) {
+                case 0:
+                    /* input from port with 16-bit address */
+                    if (y != 6) {
+                        this.setReg(y, this.readPort());
+                        this.instTStates += 12;
+                        return;
+                    } else {
+                        throw "unimplemented";
+                    }
+            }
     }
     
     throw ("unknown opcode 0xED" + op.toString(16) +
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
 }
 
+Z80.prototype.readPort = function() {
+    var result = this.iosys.readByte((this.regB << 8) | this.regC);
+    this.flag.sign  = ((result & BIT[7]) != 0);
+    this.flag.zero  = (result == 0);
+    this.flag.half  = false;
+    this.flag.n     = false;
+    this.flag.five  = ((result & BIT[5]) != 0);
+    this.flag.three = ((result & BIT[3]) != 0);
+    this.updateParity(result);
+    return result;
+}
+
 Z80.prototype.testCondition = function(c) {
     switch (c) {
-        case 1 : return this.flag.zero;
-        default : throw "unknown condition " + c;
+        case 1 :return this.flag.zero;
+        default :throw "unknown condition " + c;
     }
 }
 
@@ -212,9 +235,10 @@ Z80.prototype.testCondition = function(c) {
  */
 Z80.prototype.getReg = function(r) {
     switch (r) {
-        case 0  : return this.regB;
-        case 7  : return this.regA;
-        default : throw "unknown register " + r;
+        case 0  : return this.regB; break;
+        case 3  : return this.regE; break;
+        case 7  : return this.regA; break;
+        default : throw "read from unknown register " + r;
     }
 }
 
@@ -225,9 +249,10 @@ Z80.prototype.setReg = function(r, val) {
     val = val & 0xff;
     
     switch (r) {
-        case 0  : this.regB = val;break;
-        case 3  : this.regE = val;break;
-        default : throw "unknown register " + r;
+        case 0  : this.regB = val; break;
+        case 3  : this.regE = val; break;
+        case 7  : this.regA = val; break;
+        default : throw "write to unknown register " + r;
     }
 }
 
