@@ -130,35 +130,57 @@ Z80.prototype.step = function() {
                     
                 case 2: /* indirect loading */
                     if (q == 0) {
-                        throw "unimplemented IL q=0";
+                        switch (p) {
+                            case 0: /* LD (BC), A */
+                                this.mem.writeByte(this.getRegBC(), this.regA);
+                                this.instTStates += 7;
+                                return;
+                                
+                            case 1: /* LD (DE), A */
+                                this.mem.writeByte(this.getRegDE(), this.regA);
+                                this.instTStates += 7;
+                                return;
+                                
+                            case 2: /* LD (nn), HL */
+                                this.writeMemWord(
+                                    this.nextWord(), this.getRegHL());
+                                this.instTStates += 16;
+                                return;
+                                
+                            case 3: /* LD (nn), A */
+                                this.mem.writeByte(this.nextWord(), this.regA);
+                                this.instTStates += 13;
+                                return;
+                                
+                            default:
+                                throw "internal error p=" + p
+                        }
                     } else {
                         switch (p) {
                             case 0: /* LD A, (BC) */
                                 this.regA = this.mem.getByte(this.getRegBC());
                                 this.instTStates += 11;
-                                break;
+                                return;
                                 
                             case 1: /* LD A, (DE) */
                                 this.regA = this.mem.getByte(this.getRegDE());
                                 this.instTStates += 7;
-                                break;
+                                return;
                                 
                             case 2: /* LD HL, (nn) */
                                 this.setRegPair(2,
-                                    this.memWord(this.nextWord()));
+                                    this.getMemWord(this.nextWord()));
                                 this.instTStates += 16;
-                                break;
+                                return;
                                 
                             case 3: /* LD A, (nn) */
                                 this.regA = this.mem.getByte(this.nextWord());
                                 this.instTStates += 13;
-                                break;
+                                return;
                                 
                             default:
                                 throw "internal error p=" + p;
                         }
-                        
-                        return;
                     }
                     
                 case 3:
@@ -822,10 +844,15 @@ Z80.prototype.nextWord = function() {
     return ((hi << 8) | lo) & 0xffff;
 }
 
-Z80.prototype.memWord = function(addr) {
+Z80.prototype.getMemWord = function(addr) {
     return (this.mem.getByte(addr + 1) << 8)
           | this.mem.getByte(addr)
   }
+
+Z80.prototype.writeMemWord = function(addr, val) {
+    this.mem.writeByte(addr, val & 0xFF);
+    this.mem.writeByte(addr + 1, val >> 8);
+}
 
 Z80.prototype.toString = function() {
     return "Z80 { PC=" + hex16str(this.regPC) +
