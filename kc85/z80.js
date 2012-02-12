@@ -39,16 +39,16 @@ function Z80(mem, iosys) {
 Z80.prototype.reset = function() {
     console.log("CPU reset");
     
-    this.regA = 0x0;
-    this.regB = 0x0;
-    this.regC = 0x0;
-    this.regD = 0x0;
-    this.regE = 0x0;
-    this.regH = 0x0;
-    this.regL = 0x0;
+    this.regA = 0xff;
+    this.regB = 0xff;
+    this.regC = 0xff;
+    this.regD = 0xff;
+    this.regE = 0xff;
+    this.regH = 0xff;
+    this.regL = 0xff;
     
     this.regPC = 0xF000;
-    this.regSP = 0x0;
+    this.regSP = 0xffff;
     
     this.flag = {
         sign    : false,
@@ -78,6 +78,8 @@ Z80.prototype.run = function() {
  * see http://www.z80.info/decoding.htm
  */
 Z80.prototype.step = function() {
+//    if (this.regPC == 0xf0c5) throw "breakpoint hit";
+    
     var op = this.nextByte();
     var x = (op >> 6) & 0x03;
     var y = (op >> 3) & 0x07;
@@ -221,6 +223,16 @@ Z80.prototype.step = function() {
                         return;
                     }
                     
+                case 2: /* conditional jump: JP cc[y], nn */
+                    var nn = this.nextWord();
+                    
+                    if (this.testCondition(y)) {
+                        this.regPC = nn;
+                    }
+                    
+                    this.instTStates += 10;
+                    return;
+                    
                 case 3:
                     switch (y) {
                         case 0: /* JP nn */
@@ -240,7 +252,7 @@ Z80.prototype.step = function() {
                     throw "internal error";
                     
                 case 4: /* conditional CALL */
-                    var nn = this.nextWord();
+                    nn = this.nextWord();
                     
                     if (this.testCondition(y)) {
                         this.push(this.regPC);
@@ -447,6 +459,7 @@ Z80.prototype.testCondition = function(c) {
     switch (c) {
         case 0  :return !this.flag.zero;
         case 1  :return this.flag.zero;
+        case 5  :return this.flag.pv;
         default :throw "unknown condition " + c;
     }
 }
@@ -490,6 +503,27 @@ Z80.prototype.setReg = function(r, val) {
         case 7  :this.regA = val;break;
         default :throw "write to invalid register " + r;
     }
+}
+
+/**
+ * Returns the flags as one 8-bit value.
+ */
+Z80.prototype.getRegF = function() {
+    return (this.flag.sign  ? BIT[7] : 0)
+         | (this.flag.zero  ? BIT[6] : 0)
+         | (this.flag.five  ? BIT[5] : 0)
+         | (this.flag.half  ? BIT[4] : 0)
+         | (this.flag.three ? BIT[3] : 0)
+         | (this.flag.pv    ? BIT[2] : 0)
+         | (this.flag.n     ? BIT[1] : 0)
+         | (this.flag.carry ? BIT[0] : 0);
+}
+ 
+/**
+ * Returns the AF register pair as one 16-bit value.
+ */
+Z80.prototype.getRegAF = function() {
+    return ((this.regA << 8) | this.getRegF()) & 0xFFFF;
 }
 
 /**
@@ -585,7 +619,7 @@ Z80.prototype.updateParity = function(val) {
         val &= (val - 1);
     }
     
-    this.flag.pv = (cnt & 1);/* if cnt is odd LSB is 1 */ 
+    this.flag.pv = ((cnt & 1) == 0); /* if cnt is odd LSB is 1 */ 
 }
 
 /**
@@ -720,16 +754,23 @@ Z80.prototype.nextWord = function() {
 }
 
 Z80.prototype.toString = function() {
-    return "Z80 {PC=0x" + this.regPC.toString(16) +
-        ", SP=0x" + this.regSP.toString(16) +
-        ", A=0x" + this.regA.toString(16) +
-        ", B=0x" + this.regB.toString(16) +
-        ", C=0x" + this.regC.toString(16) +
-        ", D=0x" + this.regD.toString(16) +
-        ", E=0x" + this.regE.toString(16) +
-        ", H=0x" + this.regH.toString(16) +
-        ", L=0x" + this.regL.toString(16) +
+    return "Z80 { PC=0x" + hex16str(this.regPC) +
+        ", SP=" + hex16str(this.regSP) +
+        ", AF=" + hex16str(this.getRegAF()) +
+        ", BC=" + hex16str(this.getRegBC()) +
+        ", DE=" + hex16str(this.getRegDE()) +
+        ", HL=" + hex16str(this.getRegHL()) +
         "}";
+}
+
+function hex16str(val) {
+    var result = val.toString(16);
+    
+    while (result.length < 4) {
+        result = "0" + result;
+    }
+    
+    return "0x" + result;
 }
 
 /**

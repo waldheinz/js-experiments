@@ -15,10 +15,24 @@
             var mem = new Memory();
             var iosys = new IOSys();
             var cpu = new Z80(mem, iosys);
-            
+            var history = [];
             step = function() {
                 $('#cpuState').text(cpu.toString());
-                cpu.step();
+                for (var i=0; i < 256 * 4; i++) {
+                    history.push(cpu.toString());
+                    if (history.length > 100) history.pop();
+                    
+                    try {
+                        cpu.step();
+                    } catch (ex) {
+                        console.log(history);
+                        console.log(cpu.toString());
+                        throw ex;
+                    }
+                }
+                
+                $('#cpuState').text(cpu.toString());
+//                console.log("pv="+ cpu.flag.pv);
 //                console.log();
                 setTimeout(step, 0);
             }
@@ -27,7 +41,13 @@
 //                cpu.run();
                 cpu.reset();
                 step();
+                
+                $('#cpuState').text(cpu.toString());
             });
+            
+            
         </script>
+        
+        <button onclick="step();">step</button>
     </body>
 </html>

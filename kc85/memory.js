@@ -34,10 +34,11 @@ function RAM(size) {
 
 RAM.prototype.writeByte = function(addr, val) {
     if (addr > this.data.length) {
-        throw "write address out of bounds : 0x" + addr.toString(16);
-    } 
+//        throw "write address out of bounds : 0x" + addr.toString(16);
+    } else {
+        this.data[addr] = val;    
+    }
     
-    this.data[addr] = val;
 }
 
 RAM.prototype.getByte = function(addr) {
@@ -46,7 +47,7 @@ RAM.prototype.getByte = function(addr) {
 
 function Memory() {
     this.caos = new ROM('roms/caos31_e000.bin');
-    this.ram = new RAM(32 * 1024);
+    this.ram = new RAM(16 * 1024);
     
     this.count = 1;
 }
