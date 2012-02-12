@@ -208,10 +208,25 @@ Z80.prototype.step = function() {
                     this.instTStates += 4;
                     return;
                     
-                case 6:
-                    /* 8-bit load immediate */
+                case 6: /* 8-bit load immediate : LD r[y], n */
                     this.setReg(y, this.nextByte());
-                    return;
+                    this.instTStates += 7;
+                    return
+                    
+                case 7:
+                    switch (y) {
+                        case 6: /* SCF */
+                            this.flag.carry = true;
+                            this.flag.half  = false;
+                            this.flag.n     = false;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.instTStates += 4;
+                            return;
+                            
+                        default:
+                            throw "unimplemented assorted y=" + y;
+                    }
             }
             
             break;
