@@ -115,12 +115,15 @@ Z80.prototype.step = function() {
                         return;
                     }
                     
-                case 1:
+                case 1: /* 16-bit load immediate/add */
                     if (q == 0) {
                         /* LD rp[p], nn */
                         this.writeRegPairImm(p);
                     } else {
-                        throw "unimplemented fgd";
+                        /* ADD HL, rp[p] */
+                        this.setRegPair(2, this.instAdd16(
+                            this.getRegHL(), this.getRegPair(p)));
+                        this.instTStates += 11;
                     }
                     
                     return;
@@ -280,6 +283,8 @@ Z80.prototype.step = function() {
                             this.instTStates += 4;
                             return;
                             
+                        default:
+                            throw "unimplemented y=" + y;
                     }
                     
                     throw "internal error";
@@ -780,8 +785,23 @@ Z80.prototype.instAdd8 = function(op2, op3) {
     this.flag.n     = false;
     this.flag.carry = ((m & 0x100) != 0);
     this.regA       = result & 0xFF;
-  }
+}
 
+Z80.prototype.instAdd16 = function(op1, op2) {
+    /* determine carry flag */
+    var result      = (op1 & 0xFFFF) + (op2 & 0xFFFF);
+    this.flag.carry = ((result & 0xFFFF0000) != 0);
+
+    /* determine half-carry flag */
+    result          = (op1 & 0x0FFF) + (op2 & 0x0FFF);
+    this.flag.half  = ((result & 0xFFFFF000) != 0);
+
+    result          = op1 + op2;
+    this.flag.n     = false;
+    this.flag.five  = ((result & 0x2000) != 0);
+    this.flag.three = ((result & 0x0800) != 0);
+    return (result & 0xFFFF);
+}
 
 Z80.prototype.nextByte = function() {
     var result = this.mem.getByte(this.regPC);
