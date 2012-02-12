@@ -276,6 +276,13 @@ Z80.prototype.step = function() {
                             this.instTStates += 10;
                             return;
                             
+                        case 5: /* EX DE, HL */
+                            var tmp = this.getRegDE();
+                            this.setRegPair(1, this.getRegHL());
+                            this.setRegPair(2, tmp);
+                            this.instTStates += 4;
+                            return;
+                        
                         case 6: /* DI */
                             this.iff1 = false;
                             this.iff2 = false;
