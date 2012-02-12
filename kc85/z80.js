@@ -165,7 +165,7 @@ Z80.prototype.step = function() {
             return;
             
         case 2:
-            /* ALU operations */
+            /* ALU operations on register / memory */
             this.doALU(y, this.getReg(z));
             return;
             
@@ -271,7 +271,8 @@ Z80.prototype.step = function() {
                             case 0:this.push(this.getRegBC());break;
                             case 1:this.push(this.getRegDE());break;
                             case 2:this.push(this.getRegHL());break;
-                            default:throw "unimplemented AF pair";
+                            case 3:this.push(this.getRegAF());break;
+                            default:throw "unimplemented AF pair " + p;
                         }
                         
                         this.instTStates += 11;
@@ -284,6 +285,12 @@ Z80.prototype.step = function() {
                     }
                     
                     return;
+                    
+                case 6: /* operate on accumulator and immediate : alu[y] n */
+                    this.doALU(y, this.nextByte());
+                    this.instTStates += 7;
+                    return;
+                    
             }
     }
 
@@ -371,8 +378,7 @@ Z80.prototype.instBlock = function(a, b) {
             this.mem.writeByte(rDE, d);
             this.setRegPair(1, rDE + delta); /* update DE */
             this.setRegPair(2, rHL + delta); /* update HL */
-            rBC--;
-            setRegBC(rBC);
+            this.setRegPair(0, --rBC);
             this.flag.pv   = (rBC != 0);
             this.flag.half = false;
             this.flag.n    = false;
@@ -459,6 +465,9 @@ Z80.prototype.testCondition = function(c) {
     switch (c) {
         case 0  :return !this.flag.zero;
         case 1  :return this.flag.zero;
+        case 2  :return !this.flag.carry;
+        case 3  :return this.flag.carry;
+        case 4  :return !this.flag.pv;
         case 5  :return this.flag.pv;
         default :throw "unknown condition " + c;
     }
@@ -754,7 +763,7 @@ Z80.prototype.nextWord = function() {
 }
 
 Z80.prototype.toString = function() {
-    return "Z80 { PC=0x" + hex16str(this.regPC) +
+    return "Z80 { PC=" + hex16str(this.regPC) +
         ", SP=" + hex16str(this.regSP) +
         ", AF=" + hex16str(this.getRegAF()) +
         ", BC=" + hex16str(this.getRegBC()) +
