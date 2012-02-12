@@ -371,6 +371,34 @@ Z80.prototype.instBlock = function(a, b) {
             this.flag.three = ((d & BIT[3]) != 0);
             break;
             
+        case 1: /* block CP instructions */
+            rBC = this.getRegBC();
+            rHL = this.getRegHL();
+            var m = this.mem.getByte(rHL);
+            
+            /* determie half-carry flag */
+            var result    = (this.regA & 0x0F) - (m & 0x0F);
+            this.flag.half = ((result & 0xFFFFFFF0) != 0);
+
+            /* compare */
+            result        = this.regA - m;
+            this.flag.sign = ((result & BIT[7]) != 0);
+            this.flag.zero = (result == 0);
+            this.flag.n    = true;
+
+            this.setRegPair(2, rHL + delta);
+            this.setRegPair(0, --rBC);
+            this.flag.pv = (rBC != 0);
+
+            /* undocumented flag changes */ 
+            if (this.flag.half) {
+                --result;
+            }
+            
+            this.flag.five  = ((result & BIT[1]) != 0);
+            this.flag.three = ((result & BIT[3]) != 0);
+            break;
+            
         case 3: /* block OUT instructions */
             this.regB       = (this.regB - 1) & 0xFF;
             this.flag.sign  = ((this.regB & BIT[7]) != 0);

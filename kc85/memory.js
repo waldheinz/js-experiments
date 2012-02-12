@@ -45,7 +45,7 @@ RAM.prototype.getByte = function(addr) {
 }
 
 function Memory() {
-    this.caos = new ROM('roms/caos34.853');
+    this.caos = new ROM('roms/caos31_e000.bin');
     this.ram = new RAM(32 * 1024);
     
     this.count = 1;
