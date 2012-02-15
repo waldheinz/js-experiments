@@ -11,8 +11,10 @@ function Z80(mem, iosys) {
     this.regC = 0x0;
     this.regD = 0x0;
     this.regE = 0x0;
-    this.regH = 0x0;
-    this.regL = 0x0;
+    
+    this.regHL = 0xffff;
+    this.regIX = 0xffff;
+    this.regIY = 0xffff;
     
     this.regPC = 0x0; /* program counter */
     this.regSP = 0x0; /* stack pointer */
@@ -32,6 +34,7 @@ function Z80(mem, iosys) {
     /* internal state */
     this.instTStates = 0;
     this.interruptMode = 0;
+    this.prefix = 0; /* currently effective instruction prefix byte */
     
     this.reset();
 }
@@ -44,8 +47,10 @@ Z80.prototype.reset = function() {
     this.regC = 0xff;
     this.regD = 0xff;
     this.regE = 0xff;
-    this.regH = 0xff;
-    this.regL = 0xff;
+    
+    this.regHL = 0xffff;
+    this.regIX = 0xffff;
+    this.regIY = 0xffff;
     
     this.regPC = 0xF000;
     this.regSP = 0xffff;
@@ -63,6 +68,7 @@ Z80.prototype.reset = function() {
     
     this.instTStates = 0;
     this.interruptMode = 0;
+    this.prefix = 0;
 }
 
 Z80.prototype.run = function() {
@@ -78,14 +84,9 @@ Z80.prototype.run = function() {
  * see http://www.z80.info/decoding.htm
  */
 Z80.prototype.step = function() {
-//    if (this.regPC == 0xf0c5) throw "breakpoint hit";
+//    if (this.regPC == 0xf387) throw "breakpoint hit";
     
     var op = this.nextByte();
-    var x = (op >> 6) & 0x03;
-    var y = (op >> 3) & 0x07;
-    var z = op & 0x07;
-    var p = (y >> 1) & 0x3;
-    var q = y & 0x01;
     
     /* prefix bytes */
     switch (op) {
@@ -93,9 +94,23 @@ Z80.prototype.step = function() {
             this.stepPrefixED();
             return;
             
-        case 0xcb: case 0xdd: case 0xfd:
-            throw "prefixed instruction";
+        case 0xdd:
+        case 0xfd:
+            this.prefix = op;
+            this.instTStates += 4;
+            this.step();
+            this.prefix = 0;
+            return;
+            
+        case 0xcb:
+            throw "cb prefixed instruction";
     }
+    
+    var x = (op >> 6) & 0x03;
+    var y = (op >> 3) & 0x07;
+    var z = op & 0x07;
+    var p = (y >> 1) & 0x3;
+    var q = y & 0x01;
     
     switch (x) {
         case 0:
@@ -113,12 +128,15 @@ Z80.prototype.step = function() {
                         }
                         
                         return;
+                    } else {
+                        throw "unimplemented x=0 z=0 y=" + y;
                     }
                     
                 case 1: /* 16-bit load immediate/add */
                     if (q == 0) {
                         /* LD rp[p], nn */
-                        this.writeRegPairImm(p);
+                        this.setRegPair(p, this.nextWord());
+                        this.instTStates += 20;
                     } else {
                         /* ADD HL, rp[p] */
                         this.setRegPair(2, this.instAdd16(
@@ -209,7 +227,15 @@ Z80.prototype.step = function() {
                     return;
                     
                 case 6: /* 8-bit load immediate : LD r[y], n */
-                    this.setReg(y, this.nextByte());
+                    if (this.prefix != 0 && y == 6) {
+                        /* peek the immediate */
+                        var imm = this.mem.getByte(this.regPC + 2);
+                        this.setReg(y, imm);
+                        this.regPC = (this.regPC + 1) & 0xffff;
+                    } else {
+                        this.setReg(y, this.nextByte());
+                    }
+                    
                     this.instTStates += 7;
                     return
                     
@@ -257,27 +283,16 @@ Z80.prototype.step = function() {
                     
                 case 1:
                     if (q == 0) {
-                        /* POP */
+                        /* POP rp2[p] */
                         var val = this.pop();
                         
-                        switch (p) {
-                            case 0:
-                                this.regB = (val >> 8) & 0xff;
-                                this.regC = val & 0xff;
-                                break;
-                                
-                            case 1:
-                                this.regD = (val >> 8) & 0xff;
-                                this.regE = val & 0xff;
-                                break;
-                                
-                            case 3:
-                                this.regH = (val >> 8) & 0xff;
-                                this.regL = val & 0xff;
-                                break;
-                                
-                            default:
-                                throw "unimplemented AF pair " + p;
+                        if (p < 3) {
+                            /* POP BC, POP DE, POP HL */
+                            this.setRegPair(p, val);
+                        } else {
+                            /* POP AF */
+                            this.regA = (val >> 8) & 0xff;
+                            this.setRegF(val & 0xff);
                         }
                         
                         this.instTStates += 10;
@@ -316,7 +331,7 @@ Z80.prototype.step = function() {
                         case 5: /* EX DE, HL */
                             var tmp = this.getRegDE();
                             this.setRegPair(1, this.getRegHL());
-                            this.setRegPair(2, tmp);
+                            this.regHL = tmp; /* unaffected by prefix byte */
                             this.instTStates += 4;
                             return;
                         
@@ -564,11 +579,22 @@ Z80.prototype.getReg = function(r) {
         case 1  :return this.regC;
         case 2  :return this.regD;
         case 3  :return this.regE;
-        case 4  :return this.regH;
-        case 5  :return this.regL;
+        case 4  :return (this.regHL >> 8) & 0xff;
+        case 5  :return this.regHL & 0xff;
         case 6  : /* reads from (HL) memory location */
             this.instTStates += 3;
-            return this.mem.getByte(this.getRegHL());
+            
+            switch (this.prefix) {
+                case 0x00:
+                    return this.mem.getByte(this.regHL);
+                case 0xdd:
+                    this.instTStates += 4;
+                    return this.mem.getByte(this.regIX + this.nextByte());
+                case 0xfd:
+                    this.instTStates += 4;
+                    return this.mem.getByte(this.regIY + this.nextByte());
+                    
+            }
         case 7  :return this.regA;
         default :throw "read from invalid register " + r;
     }
@@ -585,12 +611,64 @@ Z80.prototype.setReg = function(r, val) {
         case 1  :this.regC = val;break;
         case 2  :this.regD = val;break;
         case 3  :this.regE = val;break;
-        case 4  :this.regH = val;break;
-        case 5  :this.regL = val;break;
-        case 6  : /* writes to (HL) in memory */
-            this.mem.writeByte(this.getRegHL(), val);
-            this.instTStates += 3;
+        case 4  : /* H or IXH or IYH */
+            switch (this.prefix) {
+                case 0x00:
+                    this.regHL = (this.regHL & 0x00ff) | (val << 8);
+                    break;
+                    
+                case 0xdd:
+                    this.regIX = (this.regIX & 0x00ff) | (val << 8);
+                    break;
+                    
+                case 0xfd:
+                    this.regIY = (this.regIY & 0x00ff) | (val << 8);
+                    break;
+                    
+                default:
+                    throw "illegal prefix 0x" + this.prefix.toString(16);
+            }
             break;
+            
+        case 5  : /* L or IXL or IYL */
+            switch (this.prefix) {
+                case 0x00:
+                    this.regHL = (this.regHL & 0xff00) | val;
+                    break;
+                    
+                case 0xdd:
+                    this.regIX = (this.regIX & 0xff00) | val;
+                    break;
+                    
+                case 0xfd:
+                    this.regIY = (this.regIY & 0xff00) | val;
+                    break;
+                    
+                default:
+                    throw "illegal prefix 0x" + this.prefix.toString(16);
+            }
+            break;
+        case 6  : /* writes to (HL) in memory */
+            this.instTStates += 3;
+            
+            switch (this.prefix) {
+                case 0x00:
+                    this.mem.writeByte(this.regHL, val);
+                    break;
+                case 0xdd:
+                    
+                    this.mem.writeByte(this.regIX + this.nextByte(), val);
+                    this.instTStates += 4;
+                    break;
+                    
+                case 0xfd:
+                    this.mem.writeByte(this.regIY + this.nextByte(), val);
+                    this.instTStates += 4;
+                    break;
+            }
+            
+            break;
+            
         case 7  :this.regA = val;break;
         default :throw "write to invalid register " + r;
     }
@@ -609,7 +687,21 @@ Z80.prototype.getRegF = function() {
          | (this.flag.n     ? BIT[1] : 0)
          | (this.flag.carry ? BIT[0] : 0);
 }
- 
+
+/**
+ * Sets the flags from one 8-bit value.
+ */
+Z80.prototype.setRegF = function(val) {
+    this.flag.sign  = (val & BIT[7]) != 0;
+    this.flag.zero  = (val & BIT[6]) != 0;
+    this.flag.five  = (val & BIT[5]) != 0;
+    this.flag.half  = (val & BIT[4]) != 0;
+    this.flag.three = (val & BIT[3]) != 0;
+    this.flag.pv    = (val & BIT[2]) != 0;
+    this.flag.n     = (val & BIT[1]) != 0;
+    this.flag.carry = (val & BIT[0]) != 0;
+}
+
 /**
  * Returns the AF register pair as one 16-bit value.
  */
@@ -635,7 +727,16 @@ Z80.prototype.getRegDE = function() {
  * Returns the HL register pair as one 16-bit value.
  */
 Z80.prototype.getRegHL = function() {
-    return ((this.regH << 8) | this.regL) & 0xFFFF;
+    switch (this.prefix) {
+        case 0:
+            return this.regHL;
+        case 0xdd:
+            return this.regIX;
+        case 0xdf:
+            return this.regIY;
+        default:
+            throw "illegal prefix " + this.prefix.toString(16);
+    }
 }
 
 Z80.prototype.doALU = function(op, val) {
@@ -753,9 +854,24 @@ Z80.prototype.setRegPair = function(r, val) {
             this.regE = val & 0xFF;
             break;
             
-        case 2: /* HL */
-            this.regH = (val >> 8) & 0xFF;
-            this.regL = val & 0xFF;
+        case 2: /* HL or IX or IY, depending on prefix */
+            switch (this.prefix) {
+                case 0xdd:
+                    this.regIX = val & 0xffff;
+                    break;
+                    
+                case 0xfd:
+                    this.regIY = val & 0xffff;
+                    break;
+                    
+                case 0:
+                    this.regHL = val & 0xffff;
+                    break;
+                    
+                default:
+                    throw "illegal prefix 0x" + this.prefix.toString(16);
+            }
+            
             break;
             
         case 3: /* SP */
@@ -765,15 +881,6 @@ Z80.prototype.setRegPair = function(r, val) {
         default:
             throw "illegal register pair " + r;
     }
-}
-
-/**
- * Write register pair with immediate value.
- */
-Z80.prototype.writeRegPairImm = function(r) {
-    var val = this.nextWord();
-    this.setRegPair(r, val);
-    this.instTStates += 20;
 }
 
 /**
@@ -870,19 +977,24 @@ Z80.prototype.writeMemWord = function(addr, val) {
 }
 
 Z80.prototype.toString = function() {
-    return "Z80 { PC=" + hex16str(this.regPC) +
-        ", SP=" + hex16str(this.regSP) +
-        ", AF=" + hex16str(this.getRegAF()) +
-        ", BC=" + hex16str(this.getRegBC()) +
-        ", DE=" + hex16str(this.getRegDE()) +
-        ", HL=" + hex16str(this.getRegHL()) +
+    return "Z80 { PC=" + hexStr(this.regPC) +
+        ", SP=" + hexStr(this.regSP) +
+        ", AF=" + hexStr(this.getRegAF()) +
+        ", BC=" + hexStr(this.getRegBC()) +
+        ", DE=" + hexStr(this.getRegDE()) +
+        ", HL=" + hexStr(this.getRegHL()) +
+        ((this.prefix != 0) ? (", prefix=" + hexStr(this.prefix, 2)) : "") +
         "}";
 }
 
-function hex16str(val) {
+function hexStr(val, len) {
     var result = val.toString(16);
     
-    while (result.length < 4) {
+    if (typeof len === 'undefined') {
+        len = 4;
+    }
+    
+    while (result.length < len) {
         result = "0" + result;
     }
     
