@@ -33,21 +33,23 @@ function RAM(size) {
 }
 
 RAM.prototype.writeByte = function(addr, val) {
-    if (addr > this.data.length) {
-//        throw "write address out of bounds : 0x" + addr.toString(16);
-    } else {
+    if (addr < this.data.length) {
         this.data[addr] = val;    
     }
-    
 }
 
 RAM.prototype.getByte = function(addr) {
-    return this.data[addr] & 0xff;
+    if (addr < this.data.length) {
+        return this.data[addr] & 0xff;
+    } else {
+        return 0xff;
+    }
 }
 
-function Memory() {
+function Memory(irm) {
     this.caos = new ROM('roms/caos31_e000.bin');
     this.ram = new RAM(16 * 1024);
+    this.irm = irm;
     
     this.count = 1;
 }
@@ -73,6 +75,8 @@ Memory.prototype.load = function(cb) {
 Memory.prototype.getByte = function(addr) {
     if (addr >= 0xe000) {
         return this.caos.getByte(addr - 0xe000);
+//    } else if (addr >= 0x8000 && addr < 0xc000) {
+//        return this.irm.getByte(addr - 0x8000);
     } else {
         return this.ram.getByte(addr);
     }
@@ -80,5 +84,10 @@ Memory.prototype.getByte = function(addr) {
 
 Memory.prototype.writeByte = function(addr, val) {
     val = val & 0xff;
-    this.ram.writeByte(addr, val);
+    
+//    if (addr >= 0x8000 && addr < 0xc000) {
+//        this.irm.writeByte(addr - 0x8000, val);
+//    } else {
+        this.ram.writeByte(addr, val);
+//    }
 }
