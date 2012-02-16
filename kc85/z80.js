@@ -257,6 +257,22 @@ Z80.prototype.step = function() {
                     
                 case 7: /* assorted operations on accumulator/flags */
                     switch (y) {
+                        case 0: /* RLCA */
+                            if( (this.regA & BIT[7]) != 0 ) {
+                                this.regA = ((this.regA << 1) | BIT[0]) & 0xFF;
+                                this.flag.carry = true;
+                            } else {
+                                this.regA = (this.regA << 1) & 0xFF;
+                                this.flag.carry = false;
+                            }
+                            
+                            this.flag.half  = false;
+                            this.flag.n     = false;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.instTStates += 4;
+                            return;
+                            
                         case 2: /* RLA */
                             this.regA <<= 1;
                             
@@ -266,6 +282,17 @@ Z80.prototype.step = function() {
                             
                             this.flag.carry = ((this.regA & 0x100) != 0);
                             this.regA      &= 0xFF;
+                            this.flag.half  = false;
+                            this.flag.n     = false;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.instTStates += 4;
+                            return;
+                            
+                        case 3: /* RRA */
+                            var b           = this.flag.carry ? BIT[7] : 0;
+                            this.flag.carry = ((this.regA & BIT[0]) != 0);
+                            this.regA       = (this.regA >> 1) | b;
                             this.flag.half  = false;
                             this.flag.n     = false;
                             this.flag.five  = ((this.regA & BIT[5]) != 0);
