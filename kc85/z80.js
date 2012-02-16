@@ -18,6 +18,7 @@ function Z80(mem, iosys) {
     
     this.regPC = 0x0; /* program counter */
     this.regSP = 0x0; /* stack pointer */
+    this.regI  = 0x0; /* interrupt register */
     
     /* flags */
     this.flag = {
@@ -54,6 +55,7 @@ Z80.prototype.reset = function() {
     
     this.regPC = 0xF000;
     this.regSP = 0xffff;
+    this.regI  = 0x0;
     
     this.flag = {
         sign    : false,
@@ -84,7 +86,7 @@ Z80.prototype.run = function() {
  * see http://www.z80.info/decoding.htm
  */
 Z80.prototype.step = function() {
-//    if (this.regPC == 0xf387) throw "breakpoint hit";
+//    if (this.regPC == 0xf386) throw "breakpoint hit";
     
     var op = this.nextByte();
     
@@ -415,7 +417,7 @@ Z80.prototype.stepPrefixED = function() {
                         this.instTStates += 12;
                         return;
                     } else {
-                        throw "unimplemented";
+                        throw "unimplemented y=" + y;
                     }
                     
                 case 1:
@@ -443,6 +445,19 @@ Z80.prototype.stepPrefixED = function() {
                     
                     this.instTStates += 8;
                     return;
+                    
+                case 7:
+                    switch (y) {
+                        case 0: /* LD I, A */
+                            this.regI = this.regA;
+                            this.instTStates += 9;
+                            return;
+                            
+                        default:
+                            throw "unimplemented y=" + y;
+                    }
+                default:
+                    throw "unimplemented z=" + z;
             }
             
         case 2:
@@ -450,7 +465,7 @@ Z80.prototype.stepPrefixED = function() {
                 this.instBlock(y, z);
                 return;
             } else {
-                throw "invalid instruction";
+                //throw "invalid instruction";
             }
     }
     
@@ -983,6 +998,8 @@ Z80.prototype.toString = function() {
         ", BC=" + hexStr(this.getRegBC()) +
         ", DE=" + hexStr(this.getRegDE()) +
         ", HL=" + hexStr(this.getRegHL()) +
+        ", IX=" + hexStr(this.regIX) +
+        ", IY=" + hexStr(this.regIY) +
         ((this.prefix != 0) ? (", prefix=" + hexStr(this.prefix, 2)) : "") +
         "}";
 }
