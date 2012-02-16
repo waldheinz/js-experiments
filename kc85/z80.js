@@ -483,12 +483,56 @@ Z80.prototype.stepPrefixED = function() {
                         throw "unimplemented y=" + y;
                     }
                     
-                case 1:
-                    /* output to port with 16-bit address */
+                case 1: /* output to port with 16-bit address */
+                    /* OUT (C), r[y] / OUT (C), 0 */
                     this.iosys.writeByte(
                         (this.regB << 8) | this.regC,
                         (y != 6) ? this.getReg(y) : 0);
                     this.instTStates += 12;
+                    return;
+                    
+                case 2: /* 16-bit add / subtract with carry */
+                    var op2 = this.getRegPair(p);
+                    var op3 = this.flag.carry ? 1 : 0;
+                    var rHL = this.getRegHL();
+                    var result = null;
+                    
+                    if (q == 0) {
+                        /* SBC HL, rp[p] */
+                        
+                        /* determine carry flag */
+                        result      = (rHL & 0xFFFF) - (op2 & 0xFFFF) - op3;
+                        this.flag.carry = ((result & 0xFFFF0000) != 0);
+                        
+                        /* determine half-carry flag */
+                        result         = (rHL & 0x0FFF) - (op2 & 0x0FFF) - op3;
+                        this.flag.half = ((result & 0xFFFFF000) != 0);
+                        
+                        result          = rHL - op2 - op3;
+                        this.flag.n     = true;
+                    } else {
+                        /* ADC HL, rp[p] */
+                        
+                        /* determine carry flag */
+                        result      = (rHL & 0xFFFF) + (op2 & 0xFFFF) + op3;
+                        this.flag.carry = ((result & 0xFFFF0000) != 0);
+                        
+                        /* determine half-carry flag */
+                        result         = (rHL & 0x0FFF) + (op2 & 0x0FFF) + op3;
+                        this.flag.half = ((result & 0xFFFFF000) != 0);
+                        
+                        result          = rHL + op2 + op3;
+                        this.flag.n     = false;
+                    }
+                    
+                    this.flag.sign  = ((result & 0x8000) != 0);
+                    this.flag.zero  = (result == 0);
+                    this.flag.pv    = ((result & 0xffff) != result);
+                    this.flag.five  = ((result & 0x2000) != 0);
+                    this.flag.three = ((result & 0x0800) != 0);
+                    this.setRegPair(2, result)
+                    
+                    this.instTStates += 15;
                     return;
                     
                 case 3: /* retrieve/store RP from/to immediate address */
