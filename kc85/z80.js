@@ -409,6 +409,7 @@ Z80.prototype.stepPrefixED = function() {
     var x = (op >> 6) & 0x03;
     var y = (op >> 3) & 0x07;
     var z = op & 0x07;
+    var p = (y >> 1) & 0x3;
     var q = y & 0x01;
     
     switch (x) {
@@ -433,6 +434,18 @@ Z80.prototype.stepPrefixED = function() {
                         (this.regB << 8) | this.regC,
                         (y != 6) ? this.getReg(y) : 0);
                     this.instTStates += 12;
+                    return;
+                    
+                case 3: /* retrieve/store RP from/to immediate address */
+                    if (q == 0) {
+                        /* LD (nn), rp[p] */
+                        this.writeMemWord(this.nextWord(), this.getRegPair(p));
+                    } else {
+                        /* LD rp[p], (nn) */
+                        this.setRegPair(p, this.getMemWord(this.nextWord()));
+                    }
+                    
+                    this.instTStates += 20;
                     return;
                     
                 case 6:
