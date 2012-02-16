@@ -855,6 +855,10 @@ Z80.prototype.doALU = function(op, val) {
             this.instAdd8(op, 0);
             break;
             
+        case 2: /* SUB */
+            this.instSub8(op, 0);
+            break;
+            
         case 4: /* AND */
             this.regA       = (this.regA & val) & 0xFF;
             this.flag.sign  = ((this.regA & BIT[7]) != 0);
@@ -1044,6 +1048,21 @@ Z80.prototype.instAdd8 = function(op2, op3) {
     this.flag.three = ((result & BIT[3]) != 0);
     this.flag.pv    = ((((m >> 1) ^ m) & 0x80) != 0);
     this.flag.n     = false;
+    this.flag.carry = ((m & 0x100) != 0);
+    this.regA       = result & 0xFF;
+}
+
+Z80.prototype.instSub8 = function(op2, op3) {
+    var result = this.regA - op2 - op3;
+    var m      = this.regA ^ op2 ^ result;
+
+    this.flag.sign  = ((result & BIT[7]) != 0);
+    this.flag.zero  = ((result & 0xFF) == 0);
+    this.flag.five  = ((result & BIT[5]) != 0);
+    this.flag.half  = ((m & 0x10) != 0);
+    this.flag.three = ((result & BIT[3]) != 0);
+    this.flag.pv    = ((((m >> 1) ^ m) & 0x80) != 0);
+    this.flag.n     = true;
     this.flag.carry = ((m & 0x100) != 0);
     this.regA       = result & 0xFF;
 }
