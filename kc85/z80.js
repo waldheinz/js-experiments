@@ -87,7 +87,7 @@ Z80.prototype.run = function() {
  */
 Z80.prototype.step = function() {
 //    if (this.regPC == 0xf386) throw "breakpoint hit";
-    
+    this.lastInstWasEIorDI = false;
     var op = this.nextByte();
     
     /* prefix bytes */
@@ -340,6 +340,13 @@ Z80.prototype.step = function() {
                         case 6: /* DI */
                             this.iff1 = false;
                             this.iff2 = false;
+                            this.lastInstWasEIorDI = true;
+                            this.instTStates += 4;
+                            return;
+                            
+                        case 7: /* EI */
+                            this.iff1 = true;
+                            this.iff2 = true;
                             this.lastInstWasEIorDI = true;
                             this.instTStates += 4;
                             return;
