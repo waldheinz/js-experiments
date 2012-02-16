@@ -255,8 +255,24 @@ Z80.prototype.step = function() {
                     this.instTStates += 7;
                     return
                     
-                case 7:
+                case 7: /* assorted operations on accumulator/flags */
                     switch (y) {
+                        case 2: /* RLA */
+                            this.regA <<= 1;
+                            
+                            if (this.flag.carry) {
+                                this.regA |= BIT[0];
+                            }
+                            
+                            this.flag.carry = ((this.regA & 0x100) != 0);
+                            this.regA      &= 0xFF;
+                            this.flag.half  = false;
+                            this.flag.n     = false;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.instTStates += 4;
+                            return;
+                            
                         case 6: /* SCF */
                             this.flag.carry = true;
                             this.flag.half  = false;
