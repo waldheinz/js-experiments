@@ -305,13 +305,16 @@ Z80.prototype.step = function() {
                             case 0: /* RET */
                                 this.regPC = this.pop();
                                 this.instTStates += 10;
-                                break;
+                                return;
+                                
+                            case 2: /* JP HL */
+                                this.regPC = this.getRegHL();
+                                this.instTStates += 4;
+                                return;
                                 
                             default:
                                 throw "unimplemented p=" + p;
                         }
-                        
-                        return;
                     }
                     
                 case 2: /* conditional jump: JP cc[y], nn */
