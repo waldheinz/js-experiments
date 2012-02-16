@@ -457,9 +457,14 @@ Z80.prototype.step = function() {
                     this.instTStates += 7;
                     return;
                     
+                case 7: /* restart : RST y*8 */
+                    this.push(this.regPC);
+                    this.regPC = y * 8;
+                    this.instTStates += 11;
+                    return;
             }
     }
-
+    
     throw ("unknown opcode 0x" + op.toString(16) +
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
 }
