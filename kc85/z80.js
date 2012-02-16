@@ -4,6 +4,7 @@ var BIT = [1, 2, 4, 8, 16, 32, 64, 128]
 function Z80(mem, iosys) {
     this.mem = mem;
     this.iosys = iosys;
+    this.interruptSources = [];
     
     /* registers */
     this.regA = 0x0;
@@ -496,6 +497,26 @@ Z80.prototype.stepPrefixED = function() {
                     }
                     
                     this.instTStates += 20;
+                    return;
+                    
+                case 5: /* return from interrupt */
+                    /* RETN / RETI common code */
+                    this.regPC = this.pop();
+                    this.iff1 = this.iff2;
+                    
+                    if (y == 1) {
+                        /* RETI extra handling */
+                        intrLoop:
+                        for (var i=0; i < this.interruptSources.length; i++) {
+                            var is = this.interruptSources[i];
+                            
+                            if (is.isIntrAccepted()) {
+                                is.intrFinish();
+                                break intrLoop;
+                            }
+                        }
+                    }
+                    
                     return;
                     
                 case 6:
