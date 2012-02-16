@@ -134,6 +134,10 @@ Z80.prototype.step = function() {
                         return;
                     } else {
                         switch (y) {
+                            case 0: /* NOP */
+                                this.instTStates += 4;
+                                return;
+                                
                             case 3: /* JR d */
                                 this.doJmpRel(this.nextByte());
                                 this.instTStates += 12;
