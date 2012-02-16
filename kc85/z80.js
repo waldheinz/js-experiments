@@ -96,6 +96,10 @@ Z80.prototype.step = function() {
             this.stepPrefixED();
             return;
             
+        case 0xcb:
+            this.stepPrefixCB();
+            return;
+            
         case 0xdd:
         case 0xfd:
             this.prefix = op;
@@ -103,9 +107,6 @@ Z80.prototype.step = function() {
             this.step();
             this.prefix = 0;
             return;
-            
-        case 0xcb:
-            throw "cb prefixed instruction";
     }
     
     var x = (op >> 6) & 0x03;
@@ -404,6 +405,44 @@ Z80.prototype.step = function() {
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
 }
 
+Z80.prototype.stepPrefixCB = function() {
+    if (this.prefix == 0) {
+        var op = this.nextByte();
+        var x = (op >> 6) & 0x03;
+        var y = (op >> 3) & 0x07;
+        var z = op & 0x07;
+        
+        switch (x) {
+            case 1: /* test bit : BIT y, r[z] */
+                var mask = 1 << y;
+                var reg = this.getReg(z);
+                this.flag.zero = ((reg & mask) == 0);
+                this.flag.sign = (mask == BIT[7]) && !this.flag.zero;
+                this.flag.half = true;
+                this.flag.pv   = this.flag.zero;
+                this.flag.n    = false;
+                
+                if( (op & 0x07) == 0x06) {
+                    /* test memory */
+                    this.flag.five  = false;
+                    this.flag.three = false;
+                } else {
+                    /* test register */
+                    this.flag.five  = ((reg & BIT[5]) != 0);
+                    this.flag.three = ((reg & BIT[3]) != 0);
+                }
+                
+                this.instTStates += 8;
+                return;
+                
+            default:
+                throw "unimplemented x=" + x;
+        }
+    } else {
+        throw "unimplemented prefix 0x" + this.prefix.toString(16);
+    }
+}
+
 Z80.prototype.stepPrefixED = function() {
     var op = this.nextByte();
     var x = (op >> 6) & 0x03;
@@ -616,7 +655,7 @@ Z80.prototype.getReg = function(r) {
         case 3  :return this.regE;
         case 4  :return (this.regHL >> 8) & 0xff;
         case 5  :return this.regHL & 0xff;
-        case 6  : /* reads from (HL) memory location */
+        case 6  : /* reads from (HL), (IX + d) or (IY + d) memory locations */
             this.instTStates += 3;
             
             switch (this.prefix) {
