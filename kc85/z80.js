@@ -118,7 +118,7 @@ Z80.prototype.step = function() {
     switch (x) {
         case 0:
             switch (z) {
-                case 0:
+                case 0: /* relative jumps and assorted ops */
                     if (y >= 4 && y <= 7) {
                         /* relative conditional jump (JR cc[y-4], d */
                         var d = this.nextByte();
@@ -132,7 +132,15 @@ Z80.prototype.step = function() {
                         
                         return;
                     } else {
-                        throw "unimplemented x=0 z=0 y=" + y;
+                        switch (y) {
+                            case 3: /* JR d */
+                                this.doJmpRel(this.nextByte());
+                                this.instTStates += 12;
+                                return;
+                                
+                            default:
+                                throw "unimplemented x=0 z=0 y=" + y;
+                        }
                     }
                     
                 case 1: /* 16-bit load immediate/add */
