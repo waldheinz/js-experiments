@@ -1121,7 +1121,7 @@ Z80.prototype.instDec8 = function(value) {
     this.flag.half = ((result & 0xFFFFFFF0) != 0);
     
     /* perform calculation */
-    result          = (value & 0xff) + 1;
+    result          = (value & 0xff) - 1;
     this.flag.sign  = ((result & BIT[7]) != 0);
     this.flag.zero  = ((result & 0xff) == 0);
     this.flag.pv    = (result != (result & 0xff));
