@@ -36,6 +36,8 @@ function Z80(mem, iosys) {
     /* internal state */
     this.instTStates = 0;
     this.interruptMode = 0;
+    this.iff1 = false;
+    this.iff2 = false;
     this.prefix = 0; /* currently effective instruction prefix byte */
     
     this.reset();
@@ -71,6 +73,8 @@ Z80.prototype.reset = function() {
     
     this.instTStates = 0;
     this.interruptMode = 0;
+    this.iff1 = false;
+    this.iff2 = false;
     this.prefix = 0;
 }
 
@@ -87,7 +91,6 @@ Z80.prototype.run = function() {
  * see http://www.z80.info/decoding.htm
  */
 Z80.prototype.step = function() {
-//    if (this.regPC == 0xf386) throw "breakpoint hit";
     this.lastInstWasEIorDI = false;
     var op = this.nextByte();
     
@@ -1206,6 +1209,8 @@ Z80.prototype.toString = function() {
         ", HL=" + hexStr(this.getRegHL()) +
         ", IX=" + hexStr(this.regIX) +
         ", IY=" + hexStr(this.regIY) +
+        ", im=" + this.interruptMode +
+        ", iff=(" + this.iff1 + "," + this.iff2 + ")" +
         ((this.prefix != 0) ? (", prefix=" + hexStr(this.prefix, 2)) : "") +
         "}";
 }

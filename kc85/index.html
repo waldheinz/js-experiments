@@ -8,20 +8,24 @@
         <script src="memory.js"></script>
         <script src="iosys.js"></script>
         <script src="irm.js"></script>
+        <script src="z80debug.js"></script>
     </head>
     
     <body>
         <div id="screen"></div>
-        CPU State: <pre id="cpuState">(nothing)</pre>
+        <div id="dbgState"></div>
+        
         <script>
             var irm = new IRM($('#screen').get(0));
             var mem = new Memory(irm);
             var iosys = new IOSys();
             var cpu = new Z80(mem, iosys);
+            var dbg = new Z80Debug(cpu, $('#dbgState').get(0));
             var history = [];
+            
             step = function() {
-                $('#cpuState').text(cpu.toString());
-                for (var i=0; i < 256 * 4; i++) {
+//                $('#cpuState').text(cpu.toString());
+//                for (var i=0; i < 256 * 4; i++) {
 //                    history.push(cpu.toString());
 //                    if (history.length > 100) history.pop();
                     $('#cpuState').text(cpu.toString());
@@ -32,18 +36,18 @@
 //                        console.log(cpu.toString());
 //                        throw ex;
 //                    }
-                }
+//                }
                 
-//                $('#cpuState').text(cpu.toString());
+                $('#cpuState').text(cpu.toString());
 //                console.log("pv="+ cpu.flag.pv);
 //                console.log();
-                setTimeout(step, 0);
+//                setTimeout(step, 0);
             }
             
             mem.load(function () {
 //                cpu.run();
                 cpu.reset();
-                step();
+//                step();
                 
                 $('#cpuState').text(cpu.toString());
             });
@@ -51,6 +55,8 @@
             
         </script>
         
-        <button onclick="step();">step</button>
+        <button onclick="dbg.start();">start</button>
+        <button onclick="dbg.step();">step</button>
+        <button onclick="dbg.stop();">stop</button>
     </body>
 </html>
