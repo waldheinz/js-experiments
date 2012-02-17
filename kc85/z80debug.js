@@ -59,6 +59,7 @@ Z80Debug.prototype.step = function() {
  */
 Z80Debug.prototype.run = function() {
     while (!this.onBP() && this.running) {
+        this.cpuState.text(this.z80.toString());
         this.z80.step();
     }
     

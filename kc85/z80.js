@@ -328,6 +328,7 @@ Z80.prototype.step = function() {
         case 2:
             /* ALU operations on register / memory */
             this.doALU(y, this.getReg(z));
+            this.instTStates += 4;
             return;
             
         case 3:
@@ -950,8 +951,16 @@ Z80.prototype.doALU = function(op, val) {
             this.instAdd8(op, 0);
             break;
             
+        case 1: /* ADC */
+            this.instAdd8(op, this.flag.carry ? 1 : 0 );
+            break;
+            
         case 2: /* SUB */
             this.instSub8(op, 0);
+            break;
+            
+        case 3: /* SBC */
+            this.instSub8(op, this.flag.carry ? 1 : 0 );
             break;
             
         case 4: /* AND */
