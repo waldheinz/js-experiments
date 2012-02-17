@@ -667,8 +667,8 @@ Z80.prototype.stepPrefixED = function() {
  * All block instructions.
  */
 Z80.prototype.instBlock = function(a, b) {
-    var repeat = (a > 5);
-    var delta = (a == 4) ? 1 : -1;
+    var repeat = (a >= 6);
+    var delta = ((a == 4) || (a == 6)) ? 1 : -1;
     
     switch (b) {
         case 0: /* block LD instructions */
