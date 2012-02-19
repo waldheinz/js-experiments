@@ -394,6 +394,13 @@ Z80.prototype.step = function() {
                             this.instTStates += 10;
                             return;
                             
+                        case 4: /* EX (SP), HL */
+                            var m = this.getMemWord(this.regSP);
+                            this.writeMemWord(this.regSP, this.getRegPair(2));
+                            this.setRegPair(2, m);
+                            this.instTStates += 19;
+                            return;
+                            
                         case 5: /* EX DE, HL */
                             var tmp = this.getRegDE();
                             this.setRegPair(1, this.getRegHL());
