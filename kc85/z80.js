@@ -479,11 +479,11 @@ Z80.prototype.stepPrefixCB = function() {
         var x = (op >> 6) & 0x03;
         var y = (op >> 3) & 0x07;
         var z = op & 0x07;
+        var mask = 1 << y;
+        var reg = this.getReg(z);
         
         switch (x) {
             case 1: /* test bit : BIT y, r[z] */
-                var mask = 1 << y;
-                var reg = this.getReg(z);
                 this.flag.zero = ((reg & mask) == 0);
                 this.flag.sign = (mask == BIT[7]) && !this.flag.zero;
                 this.flag.half = true;
@@ -503,6 +503,16 @@ Z80.prototype.stepPrefixCB = function() {
                 this.instTStates += 8;
                 return;
                 
+            case 2: /* reset bit : RES y, r[z] */
+                this.setReg(z, reg & ~mask);
+                this.instTStates += 8;
+                return;
+                
+            case 3: /* set bit : SET y, r[z] */
+                this.setReg(z, reg | mask);
+                this.instTStates += 8;
+                return;
+            
             default:
                 throw "unimplemented x=" + x;
         }
