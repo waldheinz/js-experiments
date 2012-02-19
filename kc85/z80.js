@@ -33,6 +33,8 @@ function Z80(mem, iosys) {
         five    : false  /* undocumented, copy of bit 5 */
     }
     
+    this.regAF2 = 0;
+    
     /* internal state */
     this.instTStates = 0;
     this.interruptMode = 0;
@@ -70,6 +72,8 @@ Z80.prototype.reset = function() {
         three   : false,
         five    : false
     }
+    
+    this.regAF2 = 0xffff;
     
     this.instTStates = 0;
     this.interruptMode = 0;
@@ -138,6 +142,13 @@ Z80.prototype.step = function() {
                     } else {
                         switch (y) {
                             case 0: /* NOP */
+                                this.instTStates += 4;
+                                return;
+                                
+                            case 1: /* EX AF, AF' */
+                                var tmp = this.getRegAF();
+                                this.setRegAF(this.regAF2);
+                                this.regAF2 = tmp;
                                 this.instTStates += 4;
                                 return;
                                 
@@ -402,7 +413,7 @@ Z80.prototype.step = function() {
                             return;
                             
                         case 5: /* EX DE, HL */
-                            var tmp = this.getRegDE();
+                            tmp = this.getRegDE();
                             this.setRegPair(1, this.getRegHL());
                             this.regHL = tmp; /* unaffected by prefix byte */
                             this.instTStates += 4;
@@ -933,6 +944,14 @@ Z80.prototype.getRegAF = function() {
 }
 
 /**
+ * Sets the AF register pair from one 16-bit value.
+ */
+Z80.prototype.setRegAF = function(val) {
+    this.setRegF(val & 0xff);
+    this.regA = (val >> 8) & 0xff;
+}
+
+/**
  * Returns the BC register pair as one 16-bit value.
  */
 Z80.prototype.getRegBC = function() {
@@ -1235,6 +1254,7 @@ Z80.prototype.toString = function() {
         ", HL=" + hexStr(this.getRegHL()) +
         ", IX=" + hexStr(this.regIX) +
         ", IY=" + hexStr(this.regIY) +
+        ", AF'=" + hexStr(this.regAF2) +
         ", im=" + this.interruptMode +
         ", iff=(" + this.iff1 + "," + this.iff2 + ")" +
         ((this.prefix != 0) ? (", prefix=" + hexStr(this.prefix, 2)) : "") +
