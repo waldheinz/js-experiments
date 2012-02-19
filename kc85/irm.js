@@ -9,7 +9,6 @@ function IRM(contElem) {
 
 IRM.prototype.writeByte = function(addr, val) {
     if (addr < this.data.length) {
-        throw "ooo";
         this.data[addr] = val;
     }
 }
