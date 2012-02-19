@@ -58,12 +58,21 @@ Z80Debug.prototype.step = function() {
  * Runs the CPU until a breakpoint is hit.
  */
 Z80Debug.prototype.run = function() {
-    while (!this.onBP() && this.running) {
+    for (var i=0; i < 256 * 4; i++) {
         this.cpuState.text(this.z80.toString());
+        
+        if (this.onBP() || !this.running) {
+            return;
+        }
+        
         this.z80.step();
     }
     
-    this.cpuState.text(this.z80.toString());
+    var self = this;
+    
+    setTimeout(function() {
+        self.run();
+    }, 0);
 }
 
 Z80Debug.prototype.reset = function() {

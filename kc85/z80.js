@@ -711,6 +711,7 @@ Z80.prototype.instBlock = function(a, b) {
             this.setRegPair(2, rHL + delta); /* update HL */
             this.setRegPair(0, --rBC);
             this.flag.pv   = (rBC != 0);
+            repeat &= this.flag.pv;
             this.flag.half = false;
             this.flag.n    = false;
             
@@ -733,6 +734,7 @@ Z80.prototype.instBlock = function(a, b) {
             result        = this.regA - m;
             this.flag.sign = ((result & BIT[7]) != 0);
             this.flag.zero = (result == 0);
+            repeat &= this.flag.zero;
             this.flag.n    = true;
 
             this.setRegPair(2, rHL + delta);
@@ -752,6 +754,7 @@ Z80.prototype.instBlock = function(a, b) {
             this.regB       = (this.regB - 1) & 0xFF;
             this.flag.sign  = ((this.regB & BIT[7]) != 0);
             this.flag.zero  = (this.regB == 0);
+            repeat &= this.flag.zero;
             this.flag.n     = true; /* yes, this does not depend on delta */
             this.flag.five  = ((this.regB & BIT[5]) != 0);
             this.flag.three = ((this.regB & BIT[3]) != 0);
@@ -765,14 +768,11 @@ Z80.prototype.instBlock = function(a, b) {
     
     if (repeat) {
         /* prepare for loop */
-        
-        if (this.flag.zero) {
-            this.instTStates += 16;
-	} else {
-//            incRegR();
-            this.doJmpRel(-2);
-            this.instTStates += 21;
-	}
+//      incRegR();
+        this.doJmpRel(-2);
+        this.instTStates += 21;
+    } else {
+        this.instTStates += 16;
     }
 }
 
