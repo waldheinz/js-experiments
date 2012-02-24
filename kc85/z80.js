@@ -501,6 +501,11 @@ Z80.prototype.stepPrefixCB = function() {
         var reg = this.getReg(z);
         
         switch (x) {
+            case 0: /* roll/shift register or memory location */
+                this.setReg(z, this.instRot(y, this.getReg(z)));
+                this.instTStates += 8;
+                return;
+                
             case 1: /* test bit : BIT y, r[z] */
                 this.flag.zero = ((reg & mask) == 0);
                 this.flag.sign = (mask == BIT[7]) && !this.flag.zero;
@@ -1190,6 +1195,29 @@ Z80.prototype.instAdd8 = function(op2, op3) {
     this.flag.n     = false;
     this.flag.carry = ((m & 0x100) != 0);
     this.regA       = result & 0xFF;
+}
+
+Z80.prototype.instRot = function(op, value) {
+    var result;
+    
+    switch (op) {
+        case 4: /* SLA */
+            this.flag.carry = ((value & BIT[7]) != 0);
+            result          = (value << 1) & 0xFF;
+            this.flag.sign  = ((result & BIT[7]) != 0);
+            this.flag.zero  = (result == 0);
+            this.flag.half  = false;
+            this.flag.n     = false;
+            this.flag.five  = ((result & BIT[5]) != 0);
+            this.flag.three = ((result & BIT[3]) != 0);
+            this.updateParity(result);
+            break;
+            
+        default:
+            throw "unimplemented op " + op;
+    }
+    
+    return result;
 }
 
 Z80.prototype.instSub8 = function(op2, op3) {
