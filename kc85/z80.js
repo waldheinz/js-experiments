@@ -1201,6 +1201,19 @@ Z80.prototype.instRot = function(op, value) {
     var result;
     
     switch (op) {
+        case 2: /* RL */
+            var b           = this.flag.carry ? 1 : 0;
+            this.flag.carry = ((value & BIT[7]) != 0);
+            result          = ((value << 1) | b) & 0xFF;
+            this.flag.sign  = ((result & BIT[7]) != 0);
+            this.flag.zero  = (result == 0);
+            this.flag.half  = false;
+            this.flag.n     = false;
+            this.flag.five  = ((result & BIT[5]) != 0);
+            this.flag.three = ((result & BIT[3]) != 0);
+            this.updateParity(result);
+            break;
+            
         case 4: /* SLA */
             this.flag.carry = ((value & BIT[7]) != 0);
             result          = (value << 1) & 0xFF;
