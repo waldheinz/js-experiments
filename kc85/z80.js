@@ -492,55 +492,93 @@ Z80.prototype.step = function() {
 }
 
 Z80.prototype.stepPrefixCB = function() {
-    if (this.prefix == 0) {
-        var op = this.nextByte();
-        var x = (op >> 6) & 0x03;
-        var y = (op >> 3) & 0x07;
-        var z = op & 0x07;
-        var mask = 1 << y;
-        var reg = this.getReg(z);
-        
-        switch (x) {
-            case 0: /* roll/shift register or memory location */
-                this.setReg(z, this.instRot(y, this.getReg(z)));
-                this.instTStates += 8;
-                return;
-                
-            case 1: /* test bit : BIT y, r[z] */
-                this.flag.zero = ((reg & mask) == 0);
-                this.flag.sign = (mask == BIT[7]) && !this.flag.zero;
-                this.flag.half = true;
-                this.flag.pv   = this.flag.zero;
-                this.flag.n    = false;
-                
-                if( (op & 0x07) == 0x06) {
-                    /* test memory */
-                    this.flag.five  = false;
-                    this.flag.three = false;
-                } else {
-                    /* test register */
-                    this.flag.five  = ((reg & BIT[5]) != 0);
-                    this.flag.three = ((reg & BIT[3]) != 0);
-                }
-                
-                this.instTStates += 8;
-                return;
-                
-            case 2: /* reset bit : RES y, r[z] */
-                this.setReg(z, reg & ~mask);
-                this.instTStates += 8;
-                return;
-                
-            case 3: /* set bit : SET y, r[z] */
-                this.setReg(z, reg | mask);
-                this.instTStates += 8;
-                return;
+    var d = null;
+    
+    
+    if (this.prefix != 0) {
+        /* DDCB / FDCB prefixed opcodes */
+        d = this.nextByte();
+    }
+    
+    var op = this.nextByte();
+    var x = (op >> 6) & 0x03;
+    var y = (op >> 3) & 0x07;
+    var z = op & 0x07;
+    var mask = 1 << y;
+    
+    /* read source value / determine memory address */
+    var value = null;
+    var addr = null;
+    
+    switch (this.prefix) {
+        case 0xdd:
+            addr = computeRelAddr(this.regIX, d);
+            value = this.mem.getByte(addr);
+            break;
             
-            default:
-                throw "unimplemented x=" + x;
+        case 0xfd:
+            addr = computeRelAddr(this.regIX, d);
+            value = this.mem.getByte(addr);
+            break;
+            
+        default:
+            value = this.getReg(z);
+    }
+    
+    /* compute result */
+    var result = null;
+    
+    switch (x) {
+        case 0: /* roll/shift register or memory location */
+            result =  this.instRot(y, value);
+            this.instTStates += 8;
+            return;
+
+        case 1: /* test bit : BIT y, r[z] */
+            this.flag.zero = ((value & mask) == 0);
+            this.flag.sign = (mask == BIT[7]) && !this.flag.zero;
+            this.flag.half = true;
+            this.flag.pv   = this.flag.zero;
+            this.flag.n    = false;
+
+            if (z == 6) {
+                /* test memory */
+                this.flag.five  = false;
+                this.flag.three = false;
+            } else {
+                /* test register */
+                this.flag.five  = ((value & BIT[5]) != 0);
+                this.flag.three = ((value & BIT[3]) != 0);
+            }
+
+            this.instTStates += 8;
+            return;
+
+        case 2: /* reset bit : RES y, r[z] */
+            result =  value & ~mask;
+            this.instTStates += 8;
+            return;
+
+        case 3: /* set bit : SET y, r[z] */
+            result =  value | mask;
+            this.instTStates += 8;
+            return;
+
+        default:
+            throw "unimplemented x=" + x;
+    }
+    
+    /* write back result to memory / register */
+    if (result != null) {
+        if (addr != null) {
+            this.mem.writeByte(addr, result);
+            
+            if (z != 6) {
+                this.setReg(z, result);
+            }
+        } else {
+            this.setReg(z, result);
         }
-    } else {
-        throw "unimplemented prefix 0x" + this.prefix.toString(16);
     }
 }
 
