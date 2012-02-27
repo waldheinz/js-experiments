@@ -5,6 +5,7 @@ function Z80Debug(z80, elem) {
     this.running = false;
     this.cpuState = $('<pre>(nothing yet)</pre>');
     this.bpList = $('<pre></pre>');
+    this.asciiDump = $('<pre></pre>');
     
     var bpInput = $('<input type="text"></input>', {
         "size" : 4,
@@ -32,6 +33,7 @@ function Z80Debug(z80, elem) {
         this.bpList.appendTo(elem);
         bpInput.appendTo(elem);
         bpEnter.appendTo(elem);
+        this.asciiDump.appendTo(elem);
     }
 }
 
@@ -69,6 +71,7 @@ Z80Debug.prototype.run = function() {
     }
     
     this.z80.mem.irm.update();
+    this.asciiDump.text(this.z80.mem.irm.dumpAscii());
     
     var self = this;
     

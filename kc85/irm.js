@@ -22,6 +22,36 @@ function IRM(contElem) {
     this.update();
 }
 
+IRM.prototype.getAsciiChar = function(x, y) {
+    var idx = 0x3200 + (y * 40) + x;
+    var b = this.data[idx];
+    var ch = ".";
+    
+    switch (b) {
+        case 0: ch = " "; break;
+        
+        default:
+            if ((b >= 0x20) && (b < 0x7f)) {
+                ch = String.fromCharCode(b);
+            }
+    }
+    
+    return ch;
+}
+
+IRM.prototype.dumpAscii = function() {
+    var result = "";
+    for (var y=0; y < 32; y++) {
+        for (var x=0; x < 40; x++) {
+            result += this.getAsciiChar(x, y);
+        }
+        
+        result += "\n";
+    }
+    
+    return result;
+}
+
 IRM.prototype.update = function() {
     if (!this.dirty) {
         return;
