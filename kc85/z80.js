@@ -314,6 +314,15 @@ Z80.prototype.step = function() {
                             this.instTStates += 4;
                             return;
                             
+                        case 5: /* CPL */
+                            this.regA       = (~this.regA) & 0xFF;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.half  = true;
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.flag.n     = true;
+                            this.instTStates += 4;
+                            return;
+                            
                         case 6: /* SCF */
                             this.flag.carry = true;
                             this.flag.half  = false;
