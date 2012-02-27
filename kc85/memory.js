@@ -30,6 +30,9 @@ ROM.prototype.getByte = function(addr) {
 
 function RAM(size) {
     this.data = new Uint8Array(size);
+    for (var i=0; i < this.data.length; i++) {
+        this.data[i] = Math.random() * 255;
+    }
 }
 
 RAM.prototype.writeByte = function(addr, val) {

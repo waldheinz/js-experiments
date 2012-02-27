@@ -4,7 +4,14 @@
  */
 function IRM(contElem) {
     this.data = new Uint8Array(16 * 1024);
+    
+    for (var i=0; i < this.data.length; i++) {
+        this.data[i] = Math.random() * 255;
+    }
+    
     this.dirty = true;
+    this.blinkEnabled = false;
+    this.blinkState = false;
     
     /* initialize canvas */
     this.canvas = document.createElement('canvas');
@@ -32,41 +39,41 @@ IRM.prototype.update = function() {
             
             if (col < 32) {
                 pIdx = ((y << 5) & 0x1E00)
-                     | ((y << 7) & 0x0180)
-                     | ((y << 3) & 0x0060)
-                     | (col & 0x001F);
+                | ((y << 7) & 0x0180)
+                | ((y << 3) & 0x0060)
+                | (col & 0x001F);
                 
                 cIdx = 0x2800 | ((y << 3) & 0x07E0) | (col & 0x001F);
             } else {
                 pIdx = 0x2000
-                    | ((y << 3) & 0x0600)
-                    | ((y << 7) & 0x0180)
-                    | ((y << 3) & 0x0060)
-                    | ((y >> 1) & 0x0018)
-                    | (col & 0x0007);
+                | ((y << 3) & 0x0600)
+                | ((y << 7) & 0x0180)
+                | ((y << 3) & 0x0060)
+                | ((y >> 1) & 0x0018)
+                | (col & 0x0007);
                 
                 cIdx = 0x3000
-                    | ((y << 1) & 0x0180)
-                    | ((y << 3) & 0x0060)
-                    | ((y >> 1) & 0x0018)
-                    | (col & 0x0007);
+                | ((y << 1) & 0x0180)
+                | ((y << 3) & 0x0060)
+                | ((y >> 1) & 0x0018)
+                | (col & 0x0007);
             }
             
             if ( (pIdx >= 0) && (pIdx < this.data.length)
-	      && (cIdx >= 0) && (cIdx < this.data.length)) {
+                && (cIdx >= 0) && (cIdx < this.data.length)) {
                 
                 var p = this.data[pIdx];
                 var c = this.data[cIdx];
                 var m = 0x80;
                 for (var i=0; (i < 8) && (x < 320); i++) {
-//                    var colorIdx = this.getColorIndex( c, (p & m) != 0 );
-                    var color = p != 0 ? 0xffffff : 0;
+                    var color = this.basicRGB[this.getColorIndex(c, (p & m) != 0)];
                     var pixelOffset = (y * 320 + x) * 4;
                     
-                    pixels[pixelOffset + 0] = p;
-                    pixels[pixelOffset + 1] = p << 2;
-                    pixels[pixelOffset + 2] = p << 4;
+                    pixels[pixelOffset + 0] = color[0];
+                    pixels[pixelOffset + 1] = color[1];
+                    pixels[pixelOffset + 2] = color[2];
                     pixels[pixelOffset + 3] = 0xff;
+                    
                     m >>= 1;
                     x++;
                 }
@@ -92,3 +99,46 @@ IRM.prototype.getByte = function(addr) {
         return 0xff;
     }
 }
+
+IRM.prototype.getColorIndex = function(cbyte, fg) {
+    if (this.blinkEnabled && this.blinkState && ((cbyte & 0x80) != 0) ) {
+        fg = false;
+    }
+    
+    return fg ? ((cbyte >> 3) & 0x0F) : ((cbyte & 0x07) + 16);
+}
+
+/**
+ * Table of basic RGB colors supported by the IRM.
+ */
+IRM.prototype.basicRGB = [
+    // primaere Vordergrundfarben
+    [ 0,   0,   0   ],	// schwarz
+    [ 0,   0,   255 ],	// blau
+    [ 255, 0,   0   ],	// rot
+    [ 255, 0,   255 ],	// purpur
+    [ 0,   255, 0   ],	// gruen
+    [ 0,   255, 255 ],	// tuerkis
+    [ 255, 255, 0   ],	// gelb
+    [ 255, 255, 255 ],	// weiss
+
+    // Vordergrundfarben mit 30 Grad Drehung im Farbkreis
+    [ 0,   0,   0   ],	// schwarz
+    [ 75,  0,   180 ],	// violett
+    [ 180, 75,  0   ],	// orange
+    [ 180, 0,   138 ],	// purpurrot
+    [ 0,   180, 75  ],	// gruenblau
+    [ 0,   138, 180 ],	// blaugruen
+    [ 138, 255, 0   ],	// gelbgruen
+    [ 255, 255, 255 ],	// weiss
+
+    // Hintergrundfarben (30% dunkler)
+    [ 0,   0,   0   ],	// schwarz
+    [ 0,   0,   180 ],	// blau
+    [ 180, 0,   0   ],	// rot
+    [ 180, 0,   180 ],	// purpur
+    [ 0,   180, 0   ],	// gruen
+    [ 0,   180, 180 ],	// tuerkis
+    [ 180, 180, 0   ],	// gelb
+    [ 180, 180, 180 ]	// weiss
+    ];
