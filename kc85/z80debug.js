@@ -68,6 +68,8 @@ Z80Debug.prototype.run = function() {
         this.z80.step();
     }
     
+    this.z80.mem.irm.update();
+    
     var self = this;
     
     setTimeout(function() {
