@@ -54,6 +54,7 @@ Z80Debug.prototype.step = function() {
     this.running = false;
     this.z80.step();
     this.cpuState.text(this.z80.toString());
+    this.z80.mem.irm.update();
 }
 
 /**
@@ -61,9 +62,10 @@ Z80Debug.prototype.step = function() {
  */
 Z80Debug.prototype.run = function() {
     for (var i=0; i < 256 * 4; i++) {
-        this.cpuState.text(this.z80.toString());
+//        this.cpuState.text(this.z80.toString());
         
         if (this.onBP() || !this.running) {
+            this.cpuState.text(this.z80.toString());
             return;
         }
         
@@ -71,7 +73,7 @@ Z80Debug.prototype.run = function() {
     }
     
     this.z80.mem.irm.update();
-    this.asciiDump.text(this.z80.mem.irm.dumpAscii());
+//    this.asciiDump.text(this.z80.mem.irm.dumpAscii());
     
     var self = this;
     

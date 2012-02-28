@@ -69,9 +69,9 @@ IRM.prototype.update = function() {
             
             if (col < 32) {
                 pIdx = ((y << 5) & 0x1E00)
-                | ((y << 7) & 0x0180)
-                | ((y << 3) & 0x0060)
-                | (col & 0x001F);
+                     | ((y << 7) & 0x0180)
+                     | ((y << 3) & 0x0060)
+                     | (col & 0x001F);
                 
                 cIdx = 0x2800 | ((y << 3) & 0x07E0) | (col & 0x001F);
             } else {
@@ -95,6 +95,7 @@ IRM.prototype.update = function() {
                 var p = this.data[pIdx];
                 var c = this.data[cIdx];
                 var m = 0x80;
+                
                 for (var i=0; (i < 8) && (x < 320); i++) {
                     var color = this.basicRGB[this.getColorIndex(c, (p & m) != 0)];
                     var pixelOffset = (y * 320 + x) * 4;
