@@ -51,28 +51,33 @@ RAM.prototype.getByte = function(addr) {
 
 function Memory(irm) {
     this.caos = new ROM('roms/caos31_e000.bin');
+    this.basic = new ROM('roms/basic_c000.bin');
     this.ram = new RAM(16 * 1024);
     this.irm = irm;
     
-    this.count = 1;
+    /* we will load these two ROMs */
+    this.roms = [this.caos, this.basic];
+    this.nextRom = 0;
 }
 
 Memory.prototype.onload = function(cb) {
     var that = this;
     
     return function() {
-        that.count--;
-    
-        if (that.count == 0) {
+        that.nextRom++;
+        
+        if (that.nextRom == that.roms.length) {
             console.log("all ROM files loaded.");
             cb();
+        } else {
+            that.roms[that.nextRom].load(that.onload(cb));
         }
     }
 }
 
 Memory.prototype.load = function(cb) {
     console.log("loading ROM files...");
-    this.caos.load(this.onload(cb));
+    this.roms[this.nextRom].load(this.onload(cb));
 }
 
 Memory.prototype.getByte = function(addr) {
@@ -80,6 +85,8 @@ Memory.prototype.getByte = function(addr) {
         return this.caos.getByte(addr - 0xe000);
     } else if (addr >= 0x8000 && addr < 0xc000) {
         return this.irm.getByte(addr - 0x8000);
+    } else if (addr >= 0xc000 && addr < 0xe000) {
+        return this.basic.getByte(addr - 0xc000);
     } else {
         return this.ram.getByte(addr);
     }

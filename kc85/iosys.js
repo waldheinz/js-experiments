@@ -9,12 +9,15 @@ function IOSys(irm) {
 }
 
 IOSys.prototype.readByte = function(port) {
-//    throw "up";
+//    throw "rup " + port.toString(16);
     return 0xff;
 }
 
 IOSys.prototype.writeByte = function(port, val) {
+//    throw "wup " + port.toString(16) + " = " + val.toString(16);
     switch (port & 0xff) {
+        case 0x80:
+            
         case 0x88:
 //            this.pio.writePortA(val);
 //            m = this.pio.fetchOutValuePortA( false );
@@ -32,6 +35,6 @@ IOSys.prototype.writeByte = function(port, val) {
             break;
             
         default:
-            /* should check for inserted modules */
+            /* should check modules */
     }
 }

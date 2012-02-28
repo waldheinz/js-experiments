@@ -748,7 +748,7 @@ Z80.prototype.stepPrefixED = function() {
                 this.instBlock(y, z);
                 return;
             } else {
-                //throw "invalid instruction";
+                throw "invalid instruction";
             }
     }
     
