@@ -786,7 +786,7 @@ Z80.prototype.instBlock = function(a, b) {
             result        = this.regA - m;
             this.flag.sign = ((result & BIT[7]) != 0);
             this.flag.zero = (result == 0);
-            repeat &= this.flag.zero;
+            repeat &= !this.flag.zero;
             this.flag.n    = true;
 
             this.setRegPair(2, rHL + delta);
@@ -806,7 +806,7 @@ Z80.prototype.instBlock = function(a, b) {
             this.regB       = (this.regB - 1) & 0xFF;
             this.flag.sign  = ((this.regB & BIT[7]) != 0);
             this.flag.zero  = (this.regB == 0);
-            repeat &= this.flag.zero;
+            repeat &= !this.flag.zero;
             this.flag.n     = true; /* yes, this does not depend on delta */
             this.flag.five  = ((this.regB & BIT[5]) != 0);
             this.flag.three = ((this.regB & BIT[3]) != 0);
