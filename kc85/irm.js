@@ -12,13 +12,15 @@ function IRM(contElem) {
     this.dirty = true;
     this.blinkEnabled = false;
     this.blinkState = false;
+    this.scale = 2;
     
     /* initialize canvas */
     this.canvas = document.createElement('canvas');
-    this.canvas.width = 320;
-    this.canvas.height = 256;
+    this.canvas.width = 320 * this.scale;
+    this.canvas.height = 256 * this.scale;
     contElem.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
+    this.ctx.scale(this.scale, this.scale);
     this.update();
 }
 
@@ -57,7 +59,11 @@ IRM.prototype.update = function() {
         return;
     }
     
-    var imgData = this.ctx.createImageData(320, 256);
+    var offScreen = document.createElement('canvas');
+    offScreen.width = 320;
+    offScreen.height = 256;
+    var octx = offScreen.getContext('2d');
+    var imgData = octx.createImageData(320, 256);
     var pixels = imgData.data;
     
     for (var y=0; y < 256; y++) {
@@ -112,7 +118,8 @@ IRM.prototype.update = function() {
         }
     }
     
-    this.ctx.putImageData(imgData, 0, 0);
+    octx.putImageData(imgData, 0, 0);
+    this.ctx.drawImage(offScreen, 0, 0);
     this.dirty = false;
 }
 
