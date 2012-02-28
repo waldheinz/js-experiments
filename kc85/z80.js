@@ -152,6 +152,19 @@ Z80.prototype.step = function() {
                                 this.instTStates += 4;
                                 return;
                                 
+                            case 2: /* DJNZ d */
+                                d = nextByte();
+                                this.regB = (this.regB - 1) & 0xFF;
+                                
+                                if (this.regB != 0) {
+                                    this.doJmpRel(d);
+                                    this.instTStates += 13;
+                                } else {
+                                    this.instTStates += 8;
+                                }
+                                
+                                return;
+                                
                             case 3: /* JR d */
                                 this.doJmpRel(this.nextByte());
                                 this.instTStates += 12;
