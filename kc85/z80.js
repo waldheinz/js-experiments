@@ -153,7 +153,7 @@ Z80.prototype.step = function() {
                                 return;
                                 
                             case 2: /* DJNZ d */
-                                d = nextByte();
+                                d = this.nextByte();
                                 this.regB = (this.regB - 1) & 0xFF;
                                 
                                 if (this.regB != 0) {
@@ -1047,21 +1047,21 @@ Z80.prototype.getRegHL = function() {
 }
 
 Z80.prototype.doALU = function(op, val) {
-    switch(op) {
+    switch (op) {
         case 0: /* ADD */
-            this.instAdd8(op, 0);
+            this.instAdd8(val, 0);
             break;
             
         case 1: /* ADC */
-            this.instAdd8(op, this.flag.carry ? 1 : 0 );
+            this.instAdd8(val, this.flag.carry ? 1 : 0 );
             break;
             
         case 2: /* SUB */
-            this.instSub8(op, 0);
+            this.instSub8(val, 0);
             break;
             
         case 3: /* SBC */
-            this.instSub8(op, this.flag.carry ? 1 : 0 );
+            this.instSub8(val, this.flag.carry ? 1 : 0 );
             break;
             
         case 4: /* AND */
