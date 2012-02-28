@@ -516,7 +516,6 @@ Z80.prototype.step = function() {
 Z80.prototype.stepPrefixCB = function() {
     var d = null;
     
-    
     if (this.prefix != 0) {
         /* DDCB / FDCB prefixed opcodes */
         d = this.nextByte();
@@ -554,7 +553,7 @@ Z80.prototype.stepPrefixCB = function() {
         case 0: /* roll/shift register or memory location */
             result =  this.instRot(y, value);
             this.instTStates += 8;
-            return;
+            break;
 
         case 1: /* test bit : BIT y, r[z] */
             this.flag.zero = ((value & mask) == 0);
@@ -574,17 +573,17 @@ Z80.prototype.stepPrefixCB = function() {
             }
 
             this.instTStates += 8;
-            return;
+            break;
 
         case 2: /* reset bit : RES y, r[z] */
             result =  value & ~mask;
             this.instTStates += 8;
-            return;
+            break;
 
         case 3: /* set bit : SET y, r[z] */
-            result =  value | mask;
+            result = value | mask;
             this.instTStates += 8;
-            return;
+            break;
 
         default:
             throw "unimplemented x=" + x;
@@ -1031,7 +1030,7 @@ Z80.prototype.getRegDE = function() {
 }
 
 /**
- * Returns the HL register pair as one 16-bit value.
+ * Returns the HL (or IX or IY) register pair as one 16-bit value.
  */
 Z80.prototype.getRegHL = function() {
     switch (this.prefix) {
