@@ -10,11 +10,12 @@ function IOSys(irm) {
 
 IOSys.prototype.readByte = function(port) {
 //    throw "rup " + port.toString(16);
+    console.log("read port 0x" + port.toString(16));
     return 0xff;
 }
 
 IOSys.prototype.writeByte = function(port, val) {
-//    throw "wup " + port.toString(16) + " = " + val.toString(16);
+    console.log("write port 0x" + port.toString(16) + " = 0x" + val.toString(16));
     switch (port & 0xff) {
         case 0x80:
             

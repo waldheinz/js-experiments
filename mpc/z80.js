@@ -433,6 +433,12 @@ Z80.prototype.step = function() {
                             this.instTStates += 11;
                             return;
                             
+                        case 3: /* IN A, (n) */
+                            this.regA = this.iosys.readByte(
+                                (this.regA << 8) | this.nextByte()) & 0xff;
+                            this.instTStates += 11;
+                            return;
+                            
                         case 4: /* EX (SP), HL */
                             var m = this.getMemWord(this.regSP);
                             this.writeMemWord(this.regSP, this.getRegPair(2));
