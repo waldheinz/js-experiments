@@ -13,9 +13,10 @@ function GDC(contElem) {
      * Defines what to do with incoming data bytes:
      * -1 -> no destination
      * 0  -> reset parameters
-     * 1  -> PRAM data
-     * 2  -> MASK data
+     * 1  -> PRAM
+     * 2  -> MASK
      * 3  -> PITCH
+     * 4  -> CURS
      */
     this.mode = undefined;
     
@@ -45,8 +46,9 @@ function GDC(contElem) {
     
     /** mask register, 16 bits */
     this.regMask = 0;
-    
     this.regPitch = 0;
+    this.regEAD = 0;
+    this.regdAD = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -97,6 +99,11 @@ GDC.prototype.writeByte = function(port, val) {
                         case 0x7: /* 01000111 - PITCH */
                             console.log("gdc: PITCH");
                             this.setDataMode(3);
+                            break;
+                            
+                        case 0x9: /* 01001001 - CURS */
+                            console.log("gdc: CURS");
+                            this.setDataMode(4);
                             break;
                             
                         case 0xa: /* 01001010 - MASK */
@@ -179,6 +186,26 @@ GDC.prototype.writeByte = function(port, val) {
                 this.regPitch = val;
                 console.log("gdc: pitch is now " +
                     this.regPitch.toString() + " words");
+                break;
+                
+            case 4: /* CURS */
+                switch (this.paramByteCnt++) {
+                    case 0:
+                        this.regEAD &= 0x3ff00;
+                        this.regEAD |= val & 0xff;
+                        break;
+                    
+                    case 1:
+                        this.regEAD &= 0x300ff;
+                        this.regEAD |= (val & 0xff) << 8;
+                        break;
+                        
+                    case 2:
+                        this.regEAD &= 0xffff;
+                        this.regEAD |= (val & 0x03) << 16;
+                        this.regdAD = (val >> 4) & 0x0f;
+                }
+                
                 break;
                 
             default:
