@@ -9,7 +9,13 @@ function GDC(contElem) {
     this.ctx = this.canvas.getContext('2d');
     this.ctx.scale(this.scale, this.scale);
     
+    /**
+     * Defines what to do with incoming data bytes:
+     * 0 -> reset parameters
+     * 1 -> PRAM data
+     */
     this.mode = undefined;
+    
     this.paramByteCnt = 0;
     
     /**
@@ -31,6 +37,8 @@ function GDC(contElem) {
     /** active display lines per field */
     this.regAL = 0;
     this.fifo = [];
+    this.pram = new Array(16);
+    this.pramWritePos = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -60,15 +68,42 @@ GDC.prototype.readByte = function(port) {
 GDC.prototype.writeByte = function(port, val) {
     if (port == 1) {
         /* command */
-        switch (val) {
-            case 0x00: /* reset */
-                console.log("gdc: reset");
-                this.mode = 0;
-                this.paramByteCnt = 0;
-                break;
-                
-            default:
-                throw "unknown GDC command " + val.toString(16);
+        
+        if (val == 0) {
+            console.log("gdc: reset");
+            this.mode = 0;
+            this.paramByteCnt = 0;
+        } else {
+            var cmd_p1 = (val >> 5) & 7;
+            
+            switch (cmd_p1) {
+                case 3: /* 011xxxxx */
+                    if (((val >> 4) & 1) == 0) {
+                        /* 0110xxxx */
+                        
+                        var cmd_p2 = (val >> 1) & 7;
+                        
+                        switch (cmd_p2) {
+                            
+                            case 7: /* 0110111x - VSYNC */
+                                console.log("gdc: set vsync mode " + (val & 1));
+                                break;
+                                
+                            default:
+                                throw "unknown " + cmd_p2;
+                        }
+                    } else {
+                        /* 0111xxxx - PRAM */
+                        this.mode = 1;
+                        this.pramWritePos = val & 0xf;
+                        console.log("gdc: PRAM " + this.pramWritePos);
+                    }
+                    
+                    break;
+                    
+                default:
+                    throw "unknown GDC command " + val.toString(2);
+            }
         }
     } else {
         /* data */
@@ -76,6 +111,15 @@ GDC.prototype.writeByte = function(port, val) {
         switch (this.mode) {
             case 0:
                 this.handleResetParamByte(val);
+                break;
+                
+            case 1:
+                this.pram[this.pramWritePos++] = val;
+                
+                if (this.pramWritePos == 15) {
+                    this.pramWritePos = 0;
+                }
+                
                 break;
                 
             default:

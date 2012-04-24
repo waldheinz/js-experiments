@@ -65,9 +65,12 @@ IOSys.prototype.readByte = function(port) {
     var p = port & 0xff;
     
     switch (p) {
-        case 0x70:
-        case 0x71:
+        case 0x70: /* 01110000 */
+        case 0x71: /* 01110001 */
             return this.gdc.readByte(port & 1);
+            
+        case 0xe7: /* 11100111, don't know what's here */
+            return 0xff;
             
         default:
             console.log("read port 0x" + p.toString(16));
