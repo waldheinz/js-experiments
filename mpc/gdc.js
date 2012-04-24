@@ -11,8 +11,10 @@ function GDC(contElem) {
     
     /**
      * Defines what to do with incoming data bytes:
-     * 0 -> reset parameters
-     * 1 -> PRAM data
+     * -1 -> no destination
+     * 0  -> reset parameters
+     * 1  -> PRAM data
+     * 2  -> MASK data
      */
     this.mode = undefined;
     
@@ -39,6 +41,9 @@ function GDC(contElem) {
     this.fifo = [];
     this.pram = new Array(16);
     this.pramWritePos = 0;
+    
+    /** mask register, 16 bits */
+    this.regMask = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -65,6 +70,11 @@ GDC.prototype.readByte = function(port) {
     }
 }
 
+GDC.prototype.setDataMode = function(mode) {
+    this.mode = mode;
+    this.paramByteCnt = 0;
+}
+
 GDC.prototype.writeByte = function(port, val) {
     if (port == 1) {
         /* command */
@@ -77,11 +87,26 @@ GDC.prototype.writeByte = function(port, val) {
             var cmd_p1 = (val >> 5) & 7;
             
             switch (cmd_p1) {
+                case 2: /* 010xxxxx */
+                    var cmd_p2 = val & 0x1f;
+                    
+                    switch (cmd_p2) {
+                        case 0xa: /* 01001010 - MASK */
+                            console.log("gdc: MASK");
+                            this.setDataMode(2);
+                            break;
+                            
+                        default:
+                            throw "unknown " + cmd_p2.toString(16);
+                    }
+                    
+                    break;
+                    
                 case 3: /* 011xxxxx */
                     if (((val >> 4) & 1) == 0) {
                         /* 0110xxxx */
                         
-                        var cmd_p2 = (val >> 1) & 7;
+                        cmd_p2 = (val >> 1) & 7;
                         
                         switch (cmd_p2) {
                             
@@ -118,6 +143,26 @@ GDC.prototype.writeByte = function(port, val) {
                 
                 if (this.pramWritePos == 15) {
                     this.pramWritePos = 0;
+                }
+                
+                break;
+                
+            case 2:
+                switch (this.paramByteCnt++) {
+                    case 0:
+                        this.regMask &= 0xff00;
+                        this.regMask |= (val & 0xff);
+                        break;
+                        
+                    case 1:
+                        this.regMask &= 0xff;
+                        this.regMask |= (val & 0xff) << 8;
+                        console.log("gdc: mask is now " +
+                            this.regMask.toString(2));
+                        break;
+                        
+                    default:
+                        console.log("gdc: ignore MASK " + val.toString(16));
                 }
                 
                 break;
