@@ -1310,6 +1310,18 @@ Z80.prototype.instRot = function(op, value) {
             this.updateParity(result);
             break;
             
+        case 7: /* SRL */
+            this.flag.carry = ((value & BIT[0]) != 0);
+            result          = value >> 1;
+            this.flag.sign  = ((result & BIT[7]) != 0);
+            this.flag.zero  = (result == 0);
+            this.flag.half  = false;
+            this.flag.n     = false;
+            this.flag.five  = ((result & BIT[5]) != 0);
+            this.flag.three = ((result & BIT[3]) != 0);
+            this.updateParity(result);
+            break;
+            
         default:
             throw "unimplemented op " + op;
     }
