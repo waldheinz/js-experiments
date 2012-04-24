@@ -15,6 +15,7 @@ function GDC(contElem) {
      * 0  -> reset parameters
      * 1  -> PRAM data
      * 2  -> MASK data
+     * 3  -> PITCH
      */
     this.mode = undefined;
     
@@ -44,6 +45,8 @@ function GDC(contElem) {
     
     /** mask register, 16 bits */
     this.regMask = 0;
+    
+    this.regPitch = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -91,6 +94,11 @@ GDC.prototype.writeByte = function(port, val) {
                     var cmd_p2 = val & 0x1f;
                     
                     switch (cmd_p2) {
+                        case 0x7: /* 01000111 - PITCH */
+                            console.log("gdc: PITCH");
+                            this.setDataMode(3);
+                            break;
+                            
                         case 0xa: /* 01001010 - MASK */
                             console.log("gdc: MASK");
                             this.setDataMode(2);
@@ -165,6 +173,12 @@ GDC.prototype.writeByte = function(port, val) {
                         console.log("gdc: ignore MASK " + val.toString(16));
                 }
                 
+                break;
+                
+            case 3: /* PITCH */
+                this.regPitch = val;
+                console.log("gdc: pitch is now " +
+                    this.regPitch.toString() + " words");
                 break;
                 
             default:
