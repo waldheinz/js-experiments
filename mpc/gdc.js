@@ -19,6 +19,7 @@ function GDC(contElem) {
      * 4  -> CURS
      * 5  -> WDAT
      * 6  -> FIGS
+     * 7  -> ZOOM
      */
     this.mode = undefined;
     
@@ -103,6 +104,16 @@ GDC.prototype.writeByte = function(port, val) {
             var cmd_p1 = (val >> 5) & 7;
             
             switch (cmd_p1) {
+                case 0: /* 000xxxxx - BCTRL or SYNC */
+                    if (((val >> 1) & 1) == 0) {
+                        /* 0000110x - BCTRL */
+                        console.log("gdc: enable display");
+                    } else {
+                        throw "unimplemented SYNC";
+                    }
+                
+                    break;
+                
                 case 1: /* 001xxxxx - WDAT or DMAW */
                     
                     if (((val >> 2) & 1) == 0) {
@@ -122,6 +133,11 @@ GDC.prototype.writeByte = function(port, val) {
                     var cmd_p2 = val & 0x1f;
                     
                     switch (cmd_p2) {
+                        case 0x6: /* 01000110 - ZOOM */
+                            console.log("gdc: ZOOM");
+                            this.setDataMode(7);
+                            break;
+                            
                         case 0x7: /* 01000111 - PITCH */
                             console.log("gdc: PITCH");
                             this.setDataMode(3);
@@ -155,7 +171,10 @@ GDC.prototype.writeByte = function(port, val) {
                         cmd_p2 = (val >> 1) & 7;
                         
                         switch (cmd_p2) {
-                            
+                            case 4: /* 01101000 - GCHRD */
+                                console.log("gdc: GCHRD");
+                                break;
+                                
                             case 7: /* 0110111x - VSYNC */
                                 console.log("gdc: set vsync mode " + (val & 1));
                                 break;
@@ -173,7 +192,7 @@ GDC.prototype.writeByte = function(port, val) {
                     break;
                     
                 default:
-                    throw "unknown GDC command " + cmd_p1.toString(2);
+                    throw "unknown GDC command " + val.toString(2);
             }
         }
     } else {
@@ -257,6 +276,10 @@ GDC.prototype.writeByte = function(port, val) {
                         throw "unimplemented wdat type " + this.wdatType;
                 }
                 
+                break;
+                
+            case 7: /* ZOOM */
+                console.log("gdc: ignore set zoom = " + val);
                 break;
                 
             default:
