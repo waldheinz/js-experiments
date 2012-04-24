@@ -30,6 +30,31 @@ function GDC(contElem) {
     
     /** active display lines per field */
     this.regAL = 0;
+    this.fifo = [];
+}
+
+GDC.prototype.readByte = function(port) {
+    if (port == 0) {
+        /* read status register bits:
+         * 0 - data ready
+         * 1 - fifo full
+         * 2 - fifo empty
+         * 3 - drawing in progress
+         * 4 - dma execute
+         * 5 - vsync active
+         * 6 - hblank active
+         * 7 - light pen detect
+         */
+        
+        var result = 0;
+        result |= (this.fifo.length == 16) ? 2 : 0;
+        result |= (this.fifo.length ==  0) ? 4 : 0;
+        console.log("gdc: status read " + result.toString(2));
+        return result;
+    } else {
+        /* read from FIDO */
+        throw "FIFO reading not implemented";
+    }
 }
 
 GDC.prototype.writeByte = function(port, val) {
@@ -79,7 +104,7 @@ GDC.prototype.setMode = function(mode) {
 
 GDC.prototype.handleResetParamByte = function(val) {
     switch (this.paramByteCnt) {
-        case 0: 
+        case 0:
             this.setMode(val);
             break;
             

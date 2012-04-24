@@ -54,7 +54,7 @@ Z80Debug.prototype.step = function() {
     this.running = false;
     this.z80.step();
     this.cpuState.text(this.z80.toString());
-    this.z80.mem.irm.update();
+//    this.z80.mem.irm.update();
 }
 
 /**
@@ -72,7 +72,7 @@ Z80Debug.prototype.run = function() {
         this.z80.step();
     }
     
-    this.z80.mem.irm.update();
+//    this.z80.mem.irm.update();
 //    this.asciiDump.text(this.z80.mem.irm.dumpAscii());
     
     var self = this;

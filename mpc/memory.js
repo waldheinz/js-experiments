@@ -36,12 +36,16 @@ function RAM(size) {
 }
 
 RAM.prototype.writeByte = function(addr, val) {
+    console.log("RAM write 0x" + addr.toString(16) + " = 0x" + val.toString(16));
+    
     if (addr < this.data.length) {
         this.data[addr] = val;    
     }
 }
 
 RAM.prototype.getByte = function(addr) {
+    console.log("RAM read 0x" + addr.toString(16));
+    
     if (addr < this.data.length) {
         return this.data[addr] & 0xff;
     } else {
@@ -51,7 +55,7 @@ RAM.prototype.getByte = function(addr) {
 
 function Memory() {
     this.rom = new ROM('roms/mpc4_eprom.rom');
-    this.ram = new RAM(16 * 1024);
+    this.ram = new RAM(64 * 1024);
     
     /* we will load the ROM */
     this.roms = [this.rom];
@@ -79,7 +83,7 @@ Memory.prototype.load = function(cb) {
 }
 
 Memory.prototype.getByte = function(addr) {
-    if (addr >= 0xc000) {
+    if (addr >= 0xc000 && addr < 0xd000) {
         return this.rom.getByte(addr - 0xc000);
     } else {
         return this.ram.getByte(addr);

@@ -62,36 +62,40 @@ function IOSys(gdc) {
 }
 
 IOSys.prototype.readByte = function(port) {
-    switch (port & 0xff) {
+    var p = port & 0xff;
+    
+    switch (p) {
         case 0x70:
         case 0x71:
             return this.gdc.readByte(port & 1);
             
         default:
-            console.log("read port 0x" + port.toString(16));
+            console.log("read port 0x" + p.toString(16));
+            throw "up";
             return 0xff;
     }
 }
 
 IOSys.prototype.writeByte = function(port, val) {
-    switch (port & 0xff) {
+    var p = port & 0xff;
+    
+    switch (p) {
         case 0x70: /* 01110000 */
         case 0x71: /* 01110001 */
-            this.gdc.writeByte(port & 1, val);
+            this.gdc.writeByte(p & 1, val);
             break;
             
         case 0xec: /* 11101100 : port a */
         case 0xed: /* 11101101 : port b */
-            this.pio_13.writeData(port & 1, val);
+            this.pio_13.writeData(p & 1, val);
             break;
             
         case 0xee: /* 11101110 : port a */
         case 0xef: /* 11101111 : port b */
-            this.pio_13.writeCtrl(port & 1, val);
+            this.pio_13.writeCtrl(p & 1, val);
             break;
             
         default:
-            /* should check modules */
-            console.log("unhandled port 0x" + port.toString(16) + " = 0x" + val.toString(16));
+            console.log("port 0x" + p.toString(16) + " = 0x" + val.toString(16));
     }
 }
