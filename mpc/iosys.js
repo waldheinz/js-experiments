@@ -56,26 +56,38 @@ Z80PIO.prototype.writeCtrl = function(port, val) {
     this.ports[port].writeCtrl(val);
 }
 
-function IOSys(irm) {
-    this.irm = irm;
+function IOSys(gdc) {
+    this.gdc = gdc;
     this.pio_13 = new Z80PIO("PIO_13");
 }
 
 IOSys.prototype.readByte = function(port) {
-    console.log("read port 0x" + port.toString(16));
-    return 0xff;
+    switch (port & 0xff) {
+        case 0x70:
+        case 0x71:
+            return this.gdc.readByte(port & 1);
+            
+        default:
+            console.log("read port 0x" + port.toString(16));
+            return 0xff;
+    }
 }
 
 IOSys.prototype.writeByte = function(port, val) {
     switch (port & 0xff) {
-        case 0xee: /* port a */
-        case 0xef: /* port b */
-            this.pio_13.writeCtrl(port & 1, val);
+        case 0x70: /* 01110000 */
+        case 0x71: /* 01110001 */
+            this.gdc.writeByte(port & 1, val);
             break;
             
-        case 0xec: /* port a */
-        case 0xed: /* port b */
+        case 0xec: /* 11101100 : port a */
+        case 0xed: /* 11101101 : port b */
             this.pio_13.writeData(port & 1, val);
+            break;
+            
+        case 0xee: /* 11101110 : port a */
+        case 0xef: /* 11101111 : port b */
+            this.pio_13.writeCtrl(port & 1, val);
             break;
             
         default:

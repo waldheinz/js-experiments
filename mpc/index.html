@@ -7,7 +7,7 @@
         <script src="z80.js"></script>
         <script src="memory.js"></script>
         <script src="iosys.js"></script>
-        <script src="irm.js"></script>
+        <script src="gdc.js"></script>
         <script src="z80debug.js"></script>
     </head>
     
@@ -16,9 +16,10 @@
         <div id="dbgState"></div>
         
         <script>
-            var irm = new IRM($('#screen').get(0));
-            var mem = new Memory(irm);
-            var iosys = new IOSys(irm);
+            var gdc = new GDC($('#screen').get(0));
+            var iosys = new IOSys(gdc);
+            var mem = new Memory();
+            
             var cpu = new Z80(mem, iosys);
             var dbg = new Z80Debug(cpu, $('#dbgState').get(0));
             var history = [];
