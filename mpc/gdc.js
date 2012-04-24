@@ -17,6 +17,8 @@ function GDC(contElem) {
      * 2  -> MASK
      * 3  -> PITCH
      * 4  -> CURS
+     * 5  -> WDAT
+     * 6  -> FIGS
      */
     this.mode = undefined;
     
@@ -43,12 +45,21 @@ function GDC(contElem) {
     this.fifo = [];
     this.pram = new Array(16);
     this.pramWritePos = 0;
+    this.wdatType = 0;
     
     /** mask register, 16 bits */
     this.regMask = 0;
     this.regPitch = 0;
     this.regEAD = 0;
     this.regdAD = 0;
+    
+    /**
+     * Mode for RMW cycles,
+     * 0 -> replace, 1 -> complement, 2 -> reset, 3 -> set
+     */
+    this.regRMWMode = 0;
+    
+    this.wdatData = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -92,6 +103,21 @@ GDC.prototype.writeByte = function(port, val) {
             var cmd_p1 = (val >> 5) & 7;
             
             switch (cmd_p1) {
+                case 1: /* 001xxxxx - WDAT or DMAW */
+                    
+                    if (((val >> 2) & 1) == 0) {
+                        /* WDAT */
+                        this.regRMWMode = val & 3;
+                        this.wdatType = (val >> 3) & 3;
+                        this.setDataMode(5);
+                        console.log("gdc: WDAT t=" + this.wdatType +
+                            ", m=" + this.regRMWMode);
+                    } else {
+                        throw "unimplemented DMAW";
+                    }
+                    
+                    break;
+                    
                 case 2: /* 010xxxxx */
                     var cmd_p2 = val & 0x1f;
                     
@@ -109,6 +135,11 @@ GDC.prototype.writeByte = function(port, val) {
                         case 0xa: /* 01001010 - MASK */
                             console.log("gdc: MASK");
                             this.setDataMode(2);
+                            break;
+                            
+                        case 0xc: /* 01001100 - FIGS */
+                            console.log("gdc: FIGS");
+                            this.setDataMode(6);
                             break;
                             
                         default:
@@ -142,7 +173,7 @@ GDC.prototype.writeByte = function(port, val) {
                     break;
                     
                 default:
-                    throw "unknown GDC command " + val.toString(2);
+                    throw "unknown GDC command " + cmd_p1.toString(2);
             }
         }
     } else {
@@ -204,6 +235,26 @@ GDC.prototype.writeByte = function(port, val) {
                         this.regEAD &= 0xffff;
                         this.regEAD |= (val & 0x03) << 16;
                         this.regdAD = (val >> 4) & 0x0f;
+                }
+                
+                break;
+                
+            case 5: /* WDAT */
+                console.log("gdc: WDAT data " + val.toString(16));
+                
+                switch (this.wdatType) {
+                    case 0:
+                        if ((this.paramByteCnt % 2) == 0) {
+                            this.wdatData = val;
+                        } else {
+                            this.wdatData = this.wdatData | (val << 8);
+                            this.execWdat();
+                        }
+                        
+                        break;
+                        
+                    default:
+                        throw "unimplemented wdat type " + this.wdatType;
                 }
                 
                 break;
