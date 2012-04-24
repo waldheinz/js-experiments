@@ -36,16 +36,12 @@ function RAM(size) {
 }
 
 RAM.prototype.writeByte = function(addr, val) {
-    console.log("RAM write 0x" + addr.toString(16) + " = 0x" + val.toString(16));
-    
     if (addr < this.data.length) {
         this.data[addr] = val;    
     }
 }
 
 RAM.prototype.getByte = function(addr) {
-    console.log("RAM read 0x" + addr.toString(16));
-    
     if (addr < this.data.length) {
         return this.data[addr] & 0xff;
     } else {
@@ -83,6 +79,8 @@ Memory.prototype.load = function(cb) {
 }
 
 Memory.prototype.getByte = function(addr) {
+//    console.log("MEM read 0x" + addr.toString(16));
+    
     if (addr >= 0xc000 && addr < 0xd000) {
         return this.rom.getByte(addr - 0xc000);
     } else {
@@ -91,6 +89,8 @@ Memory.prototype.getByte = function(addr) {
 }
 
 Memory.prototype.writeByte = function(addr, val) {
+//    console.log("MEM write 0x" + addr.toString(16) + " = 0x" + val.toString(16));
+    
     val = val & 0xff;
     
     this.ram.writeByte(addr, val);

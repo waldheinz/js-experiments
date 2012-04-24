@@ -1,6 +1,7 @@
 
 function GDC(contElem) {
     this.scale = 1;
+    this.wasReset = false;
     
     /* initialize canvas */
     this.canvas = document.createElement('canvas');
@@ -8,6 +9,12 @@ function GDC(contElem) {
     contElem.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
     this.ctx.scale(this.scale, this.scale);
+    
+    /* initialize random vram */
+    this.vram = new Uint16Array(256 * 256);
+    for (var i=0; i < this.vram.length; i++) {
+        this.vram[i] = Math.random() * 255 * 256;
+    }
     
     /**
      * Defines what to do with incoming data bytes:
@@ -61,6 +68,15 @@ function GDC(contElem) {
     this.regRMWMode = 0;
     
     this.wdatData = 0;
+    
+    /* figure drawing parameters */
+    this.regDrawDir = 0;
+    this.regDrawFlags = 0;
+    this.regDC = 0;
+    this.regD = 0;
+    this.regD2 = 0;
+    this.regD1 = 0;
+    this.regDM = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -75,6 +91,8 @@ GDC.prototype.readByte = function(port) {
          * 6 - hblank active
          * 7 - light pen detect
          */
+        
+//        if (this.AAAA) throw "up";
         
         var result = 0;
         result |= (this.fifo.length == 16) ? 2 : 0;
@@ -98,10 +116,15 @@ GDC.prototype.writeByte = function(port, val) {
         
         if (val == 0) {
             console.log("gdc: reset");
+            if (this.wasReset) {
+                throw "not again";
+            }
+            
+            this.wasReset = true;
             this.mode = 0;
             this.paramByteCnt = 0;
         } else {
-            var cmd_p1 = (val >> 5) & 7;
+            var cmd_p1 = (val >> 5) & 7; /* get 3 MS bits */
             
             switch (cmd_p1) {
                 case 0: /* 000xxxxx - BCTRL or SYNC */
@@ -172,7 +195,7 @@ GDC.prototype.writeByte = function(port, val) {
                         
                         switch (cmd_p2) {
                             case 4: /* 01101000 - GCHRD */
-                                console.log("gdc: GCHRD");
+                                this.cmdGCHRD();
                                 break;
                                 
                             case 7: /* 0110111x - VSYNC */
@@ -195,6 +218,9 @@ GDC.prototype.writeByte = function(port, val) {
                     throw "unknown GDC command " + val.toString(2);
             }
         }
+        
+        this.paint();
+        
     } else {
         /* data */
         
@@ -204,9 +230,15 @@ GDC.prototype.writeByte = function(port, val) {
                 break;
                 
             case 1:
-                this.pram[this.pramWritePos++] = val;
+                this.pram[this.pramWritePos] = val;
                 
-                if (this.pramWritePos == 15) {
+                if (this.pramWritePos >= 8) {
+                    console.log(this.pram[this.pramWritePos].toString(2));
+                }
+                
+                this.pramWritePos++;
+                
+                if (this.pramWritePos == 16) {
                     this.pramWritePos = 0;
                 }
                 
@@ -278,6 +310,60 @@ GDC.prototype.writeByte = function(port, val) {
                 
                 break;
                 
+            case 6: /* FIGS */
+                switch (this.paramByteCnt++) {
+                    case 0:
+                        this.regDrawDir = val & 7;
+                        this.regDrawFlags = val >> 3;
+                        break;
+                        
+                    case 1:
+                        this.regDC = val;
+                        break;
+                        
+                    case 2:
+                        this.regDC |= (val & 0x3f) << 8;
+                        break;
+                        
+                    case 3:
+                        this.regD = val;
+                        break;
+                        
+                    case 4:
+                        this.regD |= (val & 0x3f) << 8;
+                        break;
+                        
+                    case 5:
+                        this.regD2 = val;
+                        break;
+                        
+                    case 6:
+                        this.regD2 |= (val & 0x3f) << 8;
+                        break;
+                        
+                    case 7:
+                        this.regD1 = val;
+                        break;
+                        
+                    case 8:
+                        this.regD1 |= (val & 0x3f) << 8;
+                        break;
+                        
+                    case 9:
+                        this.regDM = val;
+                        break;
+                        
+                    case 10:
+                        this.regDM |= (val & 0x3f) << 8;
+                        break;
+                        
+                    default:
+                        console.log("suspicious FIGS parameter #"
+                            + this.paramByteCnt + " = " + val);
+                }
+                
+                break;
+                
             case 7: /* ZOOM */
                 console.log("gdc: ignore set zoom = " + val);
                 break;
@@ -337,3 +423,58 @@ GDC.prototype.handleResetParamByte = function(val) {
     this.paramByteCnt++;
 }
 
+GDC.prototype.cmdGCHRD = function() {
+    console.log(this.regDC);
+    console.log(this.regD);
+    console.log(this.regD2);
+    console.log(this.regDrawFlags.toString(2));
+    
+    for (var i=8; i < 15; i++) {
+        if (this.pram[i] != 0) throw "yeah!";
+    }
+}
+
+GDC.prototype.paint = function() {
+    var sad1 =
+        ((this.pram[2] & 3) << 16) |
+        ((this.pram[1]    ) <<  8) |
+        ((this.pram[0]    ) <<  0);
+        
+    var len1 =
+        ((this.pram[3] & 0x3f) << 4) |
+        ((this.pram[2] & 0xf0) >> 4);
+    
+//    console.log("paint sad=" + sad1 + ", len=" + len1);
+    if (len1 == 0) return;
+    
+    var offScreen = document.createElement('canvas');
+    var width = this.regAW * 16;
+    offScreen.width = width;
+    offScreen.height = this.regAL;
+    
+    var octx = offScreen.getContext('2d');
+    var imgData = octx.createImageData(width, this.regAL);
+    var pixels = imgData.data;
+    
+    for (var line=0; line < len1; line++) {
+        var off = sad1 + (this.regPitch * line);
+        
+        for (var w=0; w < this.regAW; w++) {
+            var d = this.vram[off + w];
+            var poff = (line * width + w * 16) * 4;
+            
+            for (var p=0; p < 16; p++) {
+                var pv = ((d >> (15 - p)) & 1) * 255;
+                
+                pixels[poff + p * 4 + 0] = pv;
+                pixels[poff + p * 4 + 1] = pv;
+                pixels[poff + p * 4 + 2] = pv;
+                pixels[poff + p * 4 + 3] = 0xff;
+            }
+        }
+    }
+    
+    octx.putImageData(imgData, 0, 0);
+    this.ctx.drawImage(offScreen, 0, 0);
+    this.dirty = false;
+}

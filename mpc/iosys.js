@@ -70,6 +70,7 @@ IOSys.prototype.readByte = function(port) {
             return this.gdc.readByte(port & 1);
             
         case 0xe7: /* 11100111, don't know what's here */
+            console.log("XXX unimplemented read from port 0xe7");
             return 0xff;
             
         default:
@@ -100,5 +101,6 @@ IOSys.prototype.writeByte = function(port, val) {
             
         default:
             console.log("port 0x" + p.toString(16) + " = 0x" + val.toString(16));
+            throw "up";
     }
 }
