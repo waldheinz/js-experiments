@@ -81,7 +81,9 @@ Memory.prototype.load = function(cb) {
 Memory.prototype.getByte = function(addr) {
 //    console.log("MEM read 0x" + addr.toString(16));
     
-    if (addr >= 0xc000 && addr < 0xd000) {
+    if (addr < 0x1000) {
+        return this.rom.getByte(addr);
+    } else if (addr >= 0xc000 && addr < 0xd000){
         return this.rom.getByte(addr - 0xc000);
     } else {
         return this.ram.getByte(addr);

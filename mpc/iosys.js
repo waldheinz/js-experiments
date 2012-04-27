@@ -62,7 +62,9 @@ function IOSys(gdc) {
 }
 
 IOSys.prototype.readByte = function(port) {
+//    throw "ioread";
     var p = port & 0xff;
+    console.log("read port 0x" + p.toString(16));
     
     switch (p) {
         case 0x70: /* 01110000 */
@@ -81,7 +83,9 @@ IOSys.prototype.readByte = function(port) {
 }
 
 IOSys.prototype.writeByte = function(port, val) {
+//    throw "iowrite";
     var p = port & 0xff;
+    console.log("port 0x" + p.toString(16) + " = 0x" + val.toString(16));
     
     switch (p) {
         case 0x70: /* 01110000 */

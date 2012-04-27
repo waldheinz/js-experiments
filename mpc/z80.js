@@ -42,6 +42,8 @@ function Z80(mem, iosys) {
     this.iff2 = false;
     this.prefix = 0; /* currently effective instruction prefix byte */
     
+    this.callDepth = 0;
+    
     this.reset();
 }
 
@@ -58,7 +60,7 @@ Z80.prototype.reset = function() {
     this.regIX = 0xffff;
     this.regIY = 0xffff;
     
-    this.regPC = 0xc000;
+    this.regPC = 0x0000;
     this.regSP = 0xffff;
     this.regI  = 0x0;
     
@@ -80,6 +82,7 @@ Z80.prototype.reset = function() {
     this.iff1 = false;
     this.iff2 = false;
     this.prefix = 0;
+    this.callDepth = 0;
 }
 
 Z80.prototype.run = function() {
@@ -369,7 +372,7 @@ Z80.prototype.step = function() {
                 case 0:
                     /* RET cc[y] (conditional return) */
                     if (this.testCondition(y)) {
-                        this.regPC = this.pop();
+                        this.doReturn();
                         this.instTStates += 11;
                     } else {
                         this.instTStates += 5;
@@ -396,12 +399,13 @@ Z80.prototype.step = function() {
                     } else {
                         switch (p) {
                             case 0: /* RET */
-                                this.regPC = this.pop();
+                                this.doReturn();
                                 this.instTStates += 10;
                                 return;
                                 
                             case 2: /* JP HL */
                                 this.regPC = this.getRegHL();
+                                console.log("jp HL to " + this.regPC.toString(16));
                                 this.instTStates += 4;
                                 return;
                                 
@@ -415,6 +419,7 @@ Z80.prototype.step = function() {
                     
                     if (this.testCondition(y)) {
                         this.regPC = nn;
+                        console.log("conditional jp to " + this.regPC.toString(16));
                     }
                     
                     this.instTStates += 10;
@@ -424,6 +429,7 @@ Z80.prototype.step = function() {
                     switch (y) {
                         case 0: /* JP nn */
                             this.regPC = this.nextWord();
+                            console.log("jp to " + this.regPC.toString(16));
                             this.instTStates += 10;
                             return;
                             
@@ -477,8 +483,7 @@ Z80.prototype.step = function() {
                     nn = this.nextWord();
                     
                     if (this.testCondition(y)) {
-                        this.push(this.regPC);
-                        this.regPC = nn;
+                        this.doCall(nn);
                         this.instTStates += 17;
                     } else {
                         this.instTStates += 10;
@@ -501,8 +506,8 @@ Z80.prototype.step = function() {
                     } else {
                         /* CALL nn */
                         nn = this.nextWord();
-                        this.push(this.regPC);
-                        this.regPC = nn;
+                        this.doCall(nn);
+                        
                         this.instTStates += 17;
                     }
                     
@@ -523,6 +528,29 @@ Z80.prototype.step = function() {
     
     throw ("unknown opcode 0x" + op.toString(16) +
            " (x=" + x + ", y=" + y + ", z=" + z + ")");
+}
+
+Z80.prototype.doCall = function(dest) {
+    this.push(this.regPC);
+    var oldPC = this.regPC;
+    this.regPC = dest;
+    this.callDepth++;
+    console.log(this.callIdent() + oldPC.toString(16) + " call " + this.regPC.toString(16));
+}
+
+Z80.prototype.doReturn = function() {
+    this.regPC = this.pop();
+    this.callDepth--;
+    console.log(this.callIdent() + "return to " + this.regPC.toString(16));
+}
+
+Z80.prototype.callIdent = function() {
+    var result = "";
+    for (var i=0; i < this.callDepth; i++) {
+        result += "   ";
+    }
+    
+    return result;
 }
 
 Z80.prototype.stepPrefixCB = function() {

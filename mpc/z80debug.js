@@ -63,13 +63,13 @@ Z80Debug.prototype.step = function() {
 Z80Debug.prototype.run = function() {
     for (var i=0; i < 256 * 4; i++) {
 //        this.cpuState.text(this.z80.toString());
-        console.log(this.z80.toString());
+//        console.log(this.z80.toString());
         
         if (this.onBP() || !this.running) {
             this.cpuState.text(this.z80.toString());
             return;
         }
-        this.cpuState.text(this.z80.toString());
+//        this.cpuState.text(this.z80.toString());
         this.z80.step();
     }
     
