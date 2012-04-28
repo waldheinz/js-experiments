@@ -540,8 +540,8 @@ Z80.prototype.doCall = function(dest) {
 
 Z80.prototype.doReturn = function() {
     this.regPC = this.pop();
-    this.callDepth--;
     console.log(this.callIdent() + "return to " + this.regPC.toString(16));
+    this.callDepth--;
 }
 
 Z80.prototype.callIdent = function() {

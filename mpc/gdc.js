@@ -1,7 +1,6 @@
 
 function GDC(contElem) {
     this.scale = 1;
-    this.wasReset = false;
     
     /* initialize canvas */
     this.canvas = document.createElement('canvas');
@@ -77,6 +76,8 @@ function GDC(contElem) {
     this.regD2 = 0;
     this.regD1 = 0;
     this.regDM = 0;
+    this.pramBit = 0;
+    this.pramByte = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -116,11 +117,6 @@ GDC.prototype.writeByte = function(port, val) {
         
         if (val == 0) {
             console.log("gdc: reset");
-            if (this.wasReset) {
-                throw "not again";
-            }
-            
-            this.wasReset = true;
             this.mode = 0;
             this.paramByteCnt = 0;
         } else {
@@ -286,6 +282,8 @@ GDC.prototype.writeByte = function(port, val) {
                         this.regEAD &= 0xffff;
                         this.regEAD |= (val & 0x03) << 16;
                         this.regdAD = (val >> 4) & 0x0f;
+                        this.logCursorPos();
+                
                 }
                 
                 break;
@@ -423,6 +421,13 @@ GDC.prototype.handleResetParamByte = function(val) {
     this.paramByteCnt++;
 }
 
+GDC.prototype.logCursorPos = function() {
+    var cx = this.regEAD % this.regPitch + this.regdAD;
+    var cy = Math.floor(this.regEAD / this.regPitch);
+
+    console.log("gdc: cursor is at (" + cx + ", " + cy + ")");
+}
+
 GDC.prototype.cmdGCHRD = function() {
     console.log(this.regDC);
     console.log(this.regD);
@@ -433,30 +438,34 @@ GDC.prototype.cmdGCHRD = function() {
     console.log(this.regdAD);
     console.log(this.regDrawDir.toString(2));
     
-    var steps = this.regDC * this.regD;
+    this.pramBit = 0;
+    this.pramByte = 0;
+    var forward = true;
     
-    var srcByte = 15;
-    var srcBit = 0;
-    var d = 1;
-    
-    for (var i=0; i < steps; i++) {
+    draw: while (true) {
+        if (this.dc) this.logCursorPos();
         /* grab figure from pram and advance */
-        var f = (this.pram[srcByte] >> srcBit++) & 1;
-        
-        if (srcBit > 7) {
-            srcByte--;
-        }
-        
-        if (srcByte < 8) {
-            srcByte = 15;
-        }
+        var f = (this.pram[this.pramByte] >> this.pramBit) & 1;
         
         /* update video ram */
         var o = this.vram[this.regEAD];
+        
         switch (this.regRMWMode) {
-            default:
+            case 0:
                 o &= ~(1 << this.regdAD);
                 o |= (f << this.regdAD);
+                break;
+                
+            case 1 :
+                if (f) {
+                    o ^= (1 << this.regdAD);
+                }
+                
+                console.log("ead = " + this.regEAD);
+                break;
+                
+            default:
+                throw "up";
         }
         
         this.vram[this.regEAD] = o;
@@ -464,51 +473,99 @@ GDC.prototype.cmdGCHRD = function() {
         /* advance cursor */
         switch (this.regDrawDir) {
             case 2:
-                if (d == 1) {
-                    if (this.regD < this.regD2) {
+                if (forward) {
+                    if (this.regD > 0) {
                         /* move ltr */
                         this.cursorRight();
-                        this.regD += d;
+                        this.regD -= 1;
                     } else {
-                        this.cursolUp();
-                        d = -1;
+                        this.cursorUp();
+                        
+                        if (this.regDC == 0) {
+                            break draw;
+                        }
+                        
+                        this.regDC--;
+                        forward = false;
                     }
                 } else {
-                    if (this.regD > 0) {
-                        this.cursolLeft();
-                        this.regD -= d;
+                    if (this.regD < this.regD2) {
+                        this.cursorLeft();
+                        this.regD += 1;
                     } else {
-                        this.cursolUp();
-                        d = 1;
+                        this.cursorUp();
+                        
+                        if (this.regDC == 0) {
+                            break draw;
+                        }
+                        
+                        this.regDC--;
+                        
+                        forward = true;
                     }
                 }
+                
+                break;
+                
+            default:
+                throw "unimplemented dir " + this.regDrawDir;
         }
     }
+    
+    this.paint();
+//    if (this.dc) throw "up";
+//    this.dc = true;
 }
 
-GDC.prototype.cursolLeft = function() {
+GDC.prototype.cursorLeft = function() {
     if (this.regdAD == 0) {
         this.regEAD--;
         this.regdAD = 15;
     } else  {
         this.regdAD--;
     }
+    
+    this.pramBit--;
+    
+    if (this.pramBit < 0) {
+        this.pramBit = 7;
+    }
 }
 
 GDC.prototype.cursorRight = function() {
     this.regdAD++;
     
-    if (this.regdAD == 15) {
+    if (this.regdAD > 15) {
         this.regEAD++;
+        this.regdAD = 0;
+    }
+    
+    this.pramBit++;
+    
+    if (this.pramBit > 7) {
+        this.pramBit = 0;
     }
 }
 
-GDC.prototype.cursolUp = function() {
+GDC.prototype.cursorUp = function() {
     this.regEAD -= this.regPitch;
+    
+    this.pramByte--;
+    
+    if (this.pramByte < 8) {
+        this.pramByte = 15;
+    }
 }
 
-GDC.prototype.cursolDown = function() {
+GDC.prototype.cursorDown = function() {
     this.regEAD += this.regPitch;
+    
+    
+    this.pramByte++;
+    
+    if (this.pramByte > 15) {
+        this.pramByte = 8;
+    }
 }
 
 
@@ -522,7 +579,7 @@ GDC.prototype.paint = function() {
         ((this.pram[3] & 0x3f) << 4) |
         ((this.pram[2] & 0xf0) >> 4);
     
-//    console.log("paint sad=" + sad1 + ", len=" + len1);
+    console.log("paint sad=" + sad1 + ", len=" + len1);
     if (len1 == 0) return;
     
     var offScreen = document.createElement('canvas');
@@ -544,9 +601,9 @@ GDC.prototype.paint = function() {
             for (var p=0; p < 16; p++) {
                 var pv = ((d >> (15 - p)) & 1) * 255;
                 
-                pixels[poff + p * 4 + 0] = pv;
+                pixels[poff + p * 4 + 0] = 0;
                 pixels[poff + p * 4 + 1] = pv;
-                pixels[poff + p * 4 + 2] = pv;
+                pixels[poff + p * 4 + 2] = 0;
                 pixels[poff + p * 4 + 3] = 0xff;
             }
         }
