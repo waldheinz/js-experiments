@@ -429,10 +429,88 @@ GDC.prototype.cmdGCHRD = function() {
     console.log(this.regD2);
     console.log(this.regDrawFlags.toString(2));
     
-    for (var i=8; i < 15; i++) {
-        if (this.pram[i] != 0) throw "yeah!";
+    console.log(this.regEAD);
+    console.log(this.regdAD);
+    console.log(this.regDrawDir.toString(2));
+    
+    var steps = this.regDC * this.regD;
+    
+    var srcByte = 15;
+    var srcBit = 0;
+    var d = 1;
+    
+    for (var i=0; i < steps; i++) {
+        /* grab figure from pram and advance */
+        var f = (this.pram[srcByte] >> srcBit++) & 1;
+        
+        if (srcBit > 7) {
+            srcByte--;
+        }
+        
+        if (srcByte < 8) {
+            srcByte = 15;
+        }
+        
+        /* update video ram */
+        var o = this.vram[this.regEAD];
+        switch (this.regRMWMode) {
+            default:
+                o &= ~(1 << this.regdAD);
+                o |= (f << this.regdAD);
+        }
+        
+        this.vram[this.regEAD] = o;
+        
+        /* advance cursor */
+        switch (this.regDrawDir) {
+            case 2:
+                if (d == 1) {
+                    if (this.regD < this.regD2) {
+                        /* move ltr */
+                        this.cursorRight();
+                        this.regD += d;
+                    } else {
+                        this.cursolUp();
+                        d = -1;
+                    }
+                } else {
+                    if (this.regD > 0) {
+                        this.cursolLeft();
+                        this.regD -= d;
+                    } else {
+                        this.cursolUp();
+                        d = 1;
+                    }
+                }
+        }
     }
 }
+
+GDC.prototype.cursolLeft = function() {
+    if (this.regdAD == 0) {
+        this.regEAD--;
+        this.regdAD = 15;
+    } else  {
+        this.regdAD--;
+    }
+}
+
+GDC.prototype.cursorRight = function() {
+    this.regdAD++;
+    
+    if (this.regdAD == 15) {
+        this.regEAD++;
+    }
+}
+
+GDC.prototype.cursolUp = function() {
+    this.regEAD -= this.regPitch;
+}
+
+GDC.prototype.cursolDown = function() {
+    this.regEAD += this.regPitch;
+}
+
 
 GDC.prototype.paint = function() {
     var sad1 =

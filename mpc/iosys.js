@@ -62,9 +62,7 @@ function IOSys(gdc) {
 }
 
 IOSys.prototype.readByte = function(port) {
-//    throw "ioread";
     var p = port & 0xff;
-    console.log("read port 0x" + p.toString(16));
     
     switch (p) {
         case 0x70: /* 01110000 */
@@ -76,16 +74,13 @@ IOSys.prototype.readByte = function(port) {
             return 0xff;
             
         default:
-            console.log("read port 0x" + p.toString(16));
-            throw "up";
+            console.log("XXX unimplemented read port 0x" + p.toString(16));
             return 0xff;
     }
 }
 
 IOSys.prototype.writeByte = function(port, val) {
-//    throw "iowrite";
     var p = port & 0xff;
-    console.log("port 0x" + p.toString(16) + " = 0x" + val.toString(16));
     
     switch (p) {
         case 0x70: /* 01110000 */
@@ -105,6 +100,6 @@ IOSys.prototype.writeByte = function(port, val) {
             
         default:
             console.log("port 0x" + p.toString(16) + " = 0x" + val.toString(16));
-            throw "up";
+//            throw "up";
     }
 }
