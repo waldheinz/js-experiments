@@ -50,7 +50,7 @@ function GDC(contElem) {
     /** active display lines per field */
     this.regAL = 0;
     this.fifo = [];
-    this.pram = new Array(16);
+    this.pram = new Uint8Array(16);
     this.pramWritePos = 0;
     this.wdatType = 0;
     
@@ -225,16 +225,10 @@ GDC.prototype.writeByte = function(port, val) {
                 this.handleResetParamByte(val);
                 break;
                 
-            case 1:
-                this.pram[this.pramWritePos] = val;
+            case 1: /* PRAM */
+                this.pram[this.pramWritePos++] = val;
                 
-                if (this.pramWritePos >= 8) {
-                    console.log(this.pram[this.pramWritePos].toString(2));
-                }
-                
-                this.pramWritePos++;
-                
-                if (this.pramWritePos == 16) {
+                if (this.pramWritePos > 15) {
                     this.pramWritePos = 0;
                 }
                 
@@ -281,7 +275,7 @@ GDC.prototype.writeByte = function(port, val) {
                     case 2:
                         this.regEAD &= 0xffff;
                         this.regEAD |= (val & 0x03) << 16;
-                        this.regdAD = (val >> 4) & 0x0f;
+                        this.regdAD = (val >> 4) & 0xf;
                         this.logCursorPos();
                 
                 }
@@ -422,7 +416,7 @@ GDC.prototype.handleResetParamByte = function(val) {
 }
 
 GDC.prototype.logCursorPos = function() {
-    var cx = this.regEAD % this.regPitch + this.regdAD;
+    var cx = (this.regEAD % this.regPitch ) + this.regdAD;
     var cy = Math.floor(this.regEAD / this.regPitch);
 
     console.log("gdc: cursor is at (" + cx + ", " + cy + ")");
@@ -439,8 +433,10 @@ GDC.prototype.cmdGCHRD = function() {
     console.log(this.regDrawDir.toString(2));
     
     this.pramBit = 0;
-    this.pramByte = 0;
+    this.pramByte = 15;
     var forward = true;
+    
+    this.regEAD += 23;
     
     draw: while (true) {
         if (this.dc) this.logCursorPos();

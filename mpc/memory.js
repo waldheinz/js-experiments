@@ -50,7 +50,7 @@ RAM.prototype.getByte = function(addr) {
 }
 
 function Memory() {
-    this.rom = new ROM('roms/mpc4_eprom.rom');
+    this.rom = new ROM('roms/mpc_e82cc1a2.rom');
     this.ram = new RAM(64 * 1024);
     
     /* we will load the ROM */
