@@ -9,11 +9,16 @@ function Z80(mem, iosys) {
     /* registers */
     this.regA = 0x0;
     this.regB = 0x0;
+    this.regB2 = 0x0;
     this.regC = 0x0;
+    this.regC2 = 0x0;
     this.regD = 0x0;
+    this.regD2 = 0x0;
     this.regE = 0x0;
+    this.regE2 = 0x0;
     
     this.regHL = 0xffff;
+    this.regHL2 = 0xffff;
     this.regIX = 0xffff;
     this.regIY = 0xffff;
     
@@ -50,15 +55,20 @@ function Z80(mem, iosys) {
 Z80.prototype.reset = function() {
     console.log("CPU reset");
     
-    this.regA = 0xff;
-    this.regB = 0xff;
-    this.regC = 0xff;
-    this.regD = 0xff;
-    this.regE = 0xff;
+    this.regA  = 0xff;
+    this.regB  = 0xff;
+    this.regB2 = 0xff;
+    this.regC  = 0xff;
+    this.regC2 = 0xff;
+    this.regD  = 0xff;
+    this.regD2 = 0xff;
+    this.regE  = 0xff;
+    this.regE2 = 0xff;
     
-    this.regHL = 0xffff;
-    this.regIX = 0xffff;
-    this.regIY = 0xffff;
+    this.regHL  = 0xffff;
+    this.regHL2 = 0xffff;
+    this.regIX  = 0xffff;
+    this.regIY  = 0xffff;
     
     this.regPC = 0x0000;
     this.regSP = 0xffff;
@@ -403,8 +413,29 @@ Z80.prototype.step = function() {
                                 this.instTStates += 10;
                                 return;
                                 
-//                            case 1: /* EXX */
+                            case 1: /* EXX */
+                                b          = this.regB;
+                                this.regB  = this.regB2;
+                                this.regB2 = b;
                                 
+                                b          = this.regC;
+                                this.regC  = this.regC2;
+                                this.regC2 = b;
+                                
+                                b          = this.regD;
+                                this.regD  = this.regD2;
+                                this.regD2 = b;
+                                
+                                b          = this.regE;
+                                this.regE  = this.regE2;
+                                this.regE2 = b;
+                                
+                                b          = this.regHL;
+                                this.regHL = this.regHL2;
+                                this.regHL2 = b;
+                                
+                                this.instTStates += 4;
+                                return;
                                 
                             case 2: /* JP HL */
                                 this.regPC = this.getRegHL();
@@ -1078,7 +1109,7 @@ Z80.prototype.getRegHL = function() {
             return this.regHL;
         case 0xdd:
             return this.regIX;
-        case 0xdf:
+        case 0xfd:
             return this.regIY;
         default:
             throw "illegal prefix " + this.prefix.toString(16);
