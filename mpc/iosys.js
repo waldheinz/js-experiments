@@ -56,9 +56,58 @@ Z80PIO.prototype.writeCtrl = function(port, val) {
     this.ports[port].writeCtrl(val);
 }
 
+/*
+ * SIO
+ */
+
+function Z80SIO(name) {
+    this.name = name;
+}
+
+Z80SIO.prototype.readByte = function(port) {
+    var p = port & 3;
+    
+    console.log(this.name + ": read " + p.toString(2));
+    return 0xff;
+}
+
+Z80SIO.prototype.writeByte = function(port, val) {
+    var p = port & 3;
+    
+    console.log(this.name + ": write " + p.toString(2) + " = " + val);
+}
+
+/*
+ * CTC
+ */
+
+function Z80CTC(name) {
+    this.name = name;
+}
+
+Z80CTC.prototype.readByte = function(port) {
+    var p = port & 3;
+    
+    console.log(this.name + ": read " + p.toString(2));
+    return 0xff;
+}
+
+Z80CTC.prototype.writeByte = function(port, val) {
+    var p = port & 3;
+    
+    console.log(this.name + ": write " + p.toString(2) + " = " + val);
+}
+
+
+/*
+ * IOSys
+ */
+
 function IOSys(gdc) {
     this.gdc = gdc;
+    this.ctc_21_1 = new Z80CTC("CTC_21.1");
     this.pio_13 = new Z80PIO("PIO_13");
+    this.sio_18_1 = new Z80SIO("SIO_18.1");
 }
 
 IOSys.prototype.readByte = function(port) {
@@ -69,12 +118,13 @@ IOSys.prototype.readByte = function(port) {
         case 0x71: /* 01110001 */
             return this.gdc.readByte(port & 1);
             
-        case 0xe7: /* 11100111, don't know what's here */
-            console.log("XXX unimplemented read from port 0xe7");
+        case 0xe7: /* 11100111 */
+            this.sio_18_1.readByte(p);
             return 0xff;
             
         default:
             console.log("XXX unimplemented read port 0x" + p.toString(16));
+            throw "up";
             return 0xff;
     }
 }
@@ -88,6 +138,10 @@ IOSys.prototype.writeByte = function(port, val) {
             this.gdc.writeByte(p & 1, val);
             break;
             
+        case 0xe7: /* 11100111 */
+            this.sio_18_1.writeByte(p, val);
+            break;
+            
         case 0xec: /* 11101100 : port a */
         case 0xed: /* 11101101 : port b */
             this.pio_13.writeData(p & 1, val);
@@ -98,8 +152,12 @@ IOSys.prototype.writeByte = function(port, val) {
             this.pio_13.writeCtrl(p & 1, val);
             break;
             
+        case 0xf4: /* 11110100 */
+            this.ctc_21_1.writeByte(port, val);
+            break;
+            
         default:
             console.log("port 0x" + p.toString(16) + " = 0x" + val.toString(16));
-//            throw "up";
+            throw "up";
     }
 }

@@ -403,9 +403,11 @@ Z80.prototype.step = function() {
                                 this.instTStates += 10;
                                 return;
                                 
+//                            case 1: /* EXX */
+                                
+                                
                             case 2: /* JP HL */
                                 this.regPC = this.getRegHL();
-                                console.log("jp HL to " + this.regPC.toString(16));
                                 this.instTStates += 4;
                                 return;
                                 
@@ -419,7 +421,6 @@ Z80.prototype.step = function() {
                     
                     if (this.testCondition(y)) {
                         this.regPC = nn;
-                        console.log("conditional jp to " + this.regPC.toString(16));
                     }
                     
                     this.instTStates += 10;
@@ -429,7 +430,6 @@ Z80.prototype.step = function() {
                     switch (y) {
                         case 0: /* JP nn */
                             this.regPC = this.nextWord();
-                            console.log("jp to " + this.regPC.toString(16));
                             this.instTStates += 10;
                             return;
                             
@@ -535,12 +535,12 @@ Z80.prototype.doCall = function(dest) {
     var oldPC = this.regPC;
     this.regPC = dest;
     this.callDepth++;
-    console.log(this.callIdent() + oldPC.toString(16) + " call " + this.regPC.toString(16));
+//    console.log(this.callIdent() + oldPC.toString(16) + " call " + this.regPC.toString(16));
 }
 
 Z80.prototype.doReturn = function() {
     this.regPC = this.pop();
-    console.log(this.callIdent() + "return to " + this.regPC.toString(16));
+//    console.log(this.callIdent() + "return to " + this.regPC.toString(16));
     this.callDepth--;
 }
 

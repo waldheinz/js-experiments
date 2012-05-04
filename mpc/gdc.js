@@ -93,8 +93,6 @@ GDC.prototype.readByte = function(port) {
          * 7 - light pen detect
          */
         
-//        if (this.AAAA) throw "up";
-        
         var result = 0;
         result |= (this.fifo.length == 16) ? 2 : 0;
         result |= (this.fifo.length ==  0) ? 4 : 0;
@@ -424,6 +422,7 @@ GDC.prototype.logCursorPos = function() {
 
 GDC.prototype.cmdGCHRD = function() {
     console.log(this.regDC);
+    var oldD = this.regD;
     console.log(this.regD);
     console.log(this.regD2);
     console.log(this.regDrawFlags.toString(2));
@@ -432,11 +431,19 @@ GDC.prototype.cmdGCHRD = function() {
     console.log(this.regdAD);
     console.log(this.regDrawDir.toString(2));
     
+    for (var i=0; i < 8; i++) {
+        var s = this.pram[i+8].toString(2);
+        
+        for (var ss = s.length; ss < 8; ss++) {
+            s = "0" + s;
+        }
+        
+        console.log(s);
+    }
+    
     this.pramBit = 0;
     this.pramByte = 15;
     var forward = true;
-    
-    this.regEAD += 23;
     
     draw: while (true) {
         if (this.dc) this.logCursorPos();
@@ -457,7 +464,6 @@ GDC.prototype.cmdGCHRD = function() {
                     o ^= (1 << this.regdAD);
                 }
                 
-                console.log("ead = " + this.regEAD);
                 break;
                 
             default:
@@ -508,9 +514,8 @@ GDC.prototype.cmdGCHRD = function() {
         }
     }
     
+    this.regD = oldD;
     this.paint();
-//    if (this.dc) throw "up";
-//    this.dc = true;
 }
 
 GDC.prototype.cursorLeft = function() {
@@ -556,7 +561,6 @@ GDC.prototype.cursorUp = function() {
 GDC.prototype.cursorDown = function() {
     this.regEAD += this.regPitch;
     
-    
     this.pramByte++;
     
     if (this.pramByte > 15) {
@@ -575,7 +579,7 @@ GDC.prototype.paint = function() {
         ((this.pram[3] & 0x3f) << 4) |
         ((this.pram[2] & 0xf0) >> 4);
     
-    console.log("paint sad=" + sad1 + ", len=" + len1);
+//    console.log("paint sad=" + sad1 + ", len=" + len1);
     if (len1 == 0) return;
     
     var offScreen = document.createElement('canvas');
