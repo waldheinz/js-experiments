@@ -78,6 +78,9 @@ function GDC(contElem) {
     this.regDM = 0;
     this.pramBit = 0;
     this.pramByte = 0;
+    
+    
+    this.gdchrdCnt = 0;
 }
 
 GDC.prototype.readByte = function(port) {
@@ -421,8 +424,10 @@ GDC.prototype.logCursorPos = function() {
 }
 
 GDC.prototype.cmdGCHRD = function() {
+    
+//    if (this.gdchrdCnt++ > 1) throw "haaalt! stooop!";
+    
     console.log(this.regDC);
-    var oldD = this.regD;
     console.log(this.regD);
     console.log(this.regD2);
     console.log(this.regDrawFlags.toString(2));
@@ -430,6 +435,7 @@ GDC.prototype.cmdGCHRD = function() {
     console.log(this.regEAD);
     console.log(this.regdAD);
     console.log(this.regDrawDir.toString(2));
+    
     
     for (var i=0; i < 8; i++) {
         var s = this.pram[i+8].toString(2);
@@ -446,8 +452,7 @@ GDC.prototype.cmdGCHRD = function() {
     var forward = true;
     
     draw: while (true) {
-        if (this.dc) this.logCursorPos();
-        /* grab figure from pram and advance */
+        /* grab figure from pram */
         var f = (this.pram[this.pramByte] >> this.pramBit) & 1;
         
         /* update video ram */
@@ -514,7 +519,9 @@ GDC.prototype.cmdGCHRD = function() {
         }
     }
     
-    this.regD = oldD;
+    console.log("gchrd done");
+    this.logCursorPos();
+    
     this.paint();
 }
 
@@ -599,7 +606,7 @@ GDC.prototype.paint = function() {
             var poff = (line * width + w * 16) * 4;
             
             for (var p=0; p < 16; p++) {
-                var pv = ((d >> (15 - p)) & 1) * 255;
+                var pv = ((d >> (p)) & 1) * 255;
                 
                 pixels[poff + p * 4 + 0] = 0;
                 pixels[poff + p * 4 + 1] = pv;
