@@ -1,4 +1,8 @@
 
+/*
+ * PIO
+ */
+
 function Z80PIOPort(name) {
     this.name = name;
     this.mode = 0;
@@ -12,6 +16,11 @@ function Z80PIO(name) {
     this.portA = new Z80PIOPort(name + " (Port A)");
     this.portB = new Z80PIOPort(name + " (Port B)");
     this.ports = [this.portA, this.portB];
+}
+
+Z80PIOPort.prototype.readData = function() {
+    console.log(this.name + ": read data ");
+    throw "not yet";
 }
 
 Z80PIOPort.prototype.writeData = function(val) {
@@ -46,6 +55,10 @@ Z80PIOPort.prototype.setMode = function(mode) {
     if (mode == 3) {
         this.waitMask = true;
     }
+}
+
+Z80PIO.prototype.readData = function(port, val) {
+    this.ports[port].readData(val);
 }
 
 Z80PIO.prototype.writeData = function(port, val) {
@@ -119,8 +132,11 @@ IOSys.prototype.readByte = function(port) {
             return this.gdc.readByte(port & 1);
             
         case 0xe7: /* 11100111 */
-            this.sio_18_1.readByte(p);
-            return 0xff;
+            return this.sio_18_1.readByte(p);
+            
+        case 0xec: /* 11101100 : port a */
+        case 0xed: /* 11101101 : port b */
+            return this.pio_13.readData(p & 1);
             
         default:
             console.log("XXX unimplemented read port 0x" + p.toString(16));
