@@ -807,6 +807,18 @@ Z80.prototype.stepPrefixED = function() {
                             this.instTStates += 9;
                             return;
                             
+                        case 2: /* LD A, I */
+                            this.regA       = this.regI;
+                            this.flag.sign  = ((this.regA & BIT[7]) != 0);
+                            this.flag.zero  = (this.regA == 0);
+                            this.flag.pv    = this.iff2;
+                            this.flag.half  = false;
+                            this.flag.n     = false;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.instTStates += 9;
+                            return;
+                            
                         default:
                             throw "unimplemented y=" + y;
                     }
