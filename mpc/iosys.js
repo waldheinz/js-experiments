@@ -158,9 +158,12 @@ IOSys.prototype.readByte = function(port) {
         case 0xe7: /* 11100111 */
             return this.sio_18_1.readByte(p);
             
-        case 0xec: /* 11101100 : port a */
-        case 0xed: /* 11101101 : port b */
+        case 0xec: /* 11101100 : pio 13, port a */
+        case 0xed: /* 11101101 : pio 13, port b */
             return this.pio_13.readData(p & 1);
+            
+        case 0xf8: /* 11111000 : FDC_1 (CS_7) */
+            return this.fdc.readByte(p & 1);
             
         default:
             console.log("XXX unimplemented read port 0x" + p.toString(16));
@@ -194,6 +197,10 @@ IOSys.prototype.writeByte = function(port, val) {
             
         case 0xf4: /* 11110100 */
             this.ctc_21_1.writeByte(port, val);
+            break;
+            
+        case 0xf9: /* 11111001 : FDC command */
+            this.fdc.writeByte(p & 1, val);
             break;
             
         default:
