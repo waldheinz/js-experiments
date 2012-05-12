@@ -15,7 +15,12 @@ DMA = function() {
     this.direction = 0;
     
     this.blockLength = 0;
+    
+    /**
+     * Start address for operation.
+     */
     this.portAStart = 0;
+    this.portBStart = 0;
     
     /**
      * 0 = memory, 1 = I/O port
@@ -44,6 +49,8 @@ DMA.prototype.writeByte = function(val) {
             if ((val & 0x03) == 0x03) {
                 /* bit 0 and 1 are set */
                 this.doWriteReg6(val);
+            } else if ((val & 0x03) == 0x01) {
+                this.doWriteReg4(val);
             } else {
                 throw "unknown command 0x" + val.toString(16);
             }
@@ -162,6 +169,49 @@ DMA.prototype.doWriteReg2 = function(val) {
     
     this.log("WR2 port B dest=" +
         this.portBDest + ", delta=" + this.portBDelta);
+}
+
+DMA.prototype.doWriteReg4 = function(val) {
+    var that = this;
+    
+    if ((val & 0x04) != 0) {
+        /* Port B low byte */
+        this.dataHandlers.push(function(b) {
+            that.portBStart &= 0xff00;
+            that.portBStart |= b & 0xff;
+            that.log("WR4 port B start = 0x" + that.portBStart.toString(16));
+        });
+    }
+    
+    if ((val & 0x08) != 0) {
+        /* Port B high byte */
+        this.dataHandlers.push(function(b) {
+            that.portBStart &= 0x00ff;
+            that.portBStart |= (b & 0xff) << 8;
+            that.log("WR4 port B start = 0x" + that.portBStart.toString(16));
+        });
+    }
+    
+    if ((val & 0x10) != 0) {
+        /* interrupt control byte */
+        this.dataHandlers.push(function(b) {
+            that.log("WR4 interrupt control = " + b.toString(16));
+            
+            if ((b & 0x08) != 0) {
+                that.dataHandlers.push(function(b) {
+                    that.log("WR4 pulse control = " + b.toString(16));
+                });
+            }
+            
+            if ((b & 0x10) != 0) {
+                that.dataHandlers.push(function(b) {
+                    that.log("WR4 IV = " + b.toString(16));
+                });
+            }
+            
+        });
+    }
+    
 }
 
 DMA.prototype.doWriteReg6 = function(val) {
