@@ -21,11 +21,13 @@ DMA = function() {
      * 0 = memory, 1 = I/O port
      */
     this.portADest = 0;
+    this.portBDest = 0;
     
     /**
      * Port A increment, should be 0, 1 or -1.
      */
     this.portADelta = 0;
+    this.portBDelta = 0;
 }
 
 DMA.prototype.log = function(message) {
@@ -47,12 +49,11 @@ DMA.prototype.writeByte = function(val) {
             }
 
         } else {
-
             if ((val & 0x03) == 0) {
-                if ((val & 0x04) == 0x04) {
+                if ((val & 0x04) != 0) {
                     this.doWriteReg1(val);
                 } else {
-                    throw "unknown command 0x" + val.toString(16);
+                    this.doWriteReg2(val);
                 }
             } else {
                 this.doWriteReg0(val);
@@ -69,6 +70,8 @@ DMA.prototype.doWriteReg0 = function(val) {
     
     var that = this;
     
+    this.log("WR0 op=" + this.operation + ", dir=" + this.direction);
+    
     if ((val & 0x08) != 0) {
         /* Port A low byte */
         this.dataHandlers.push(function(b) {
@@ -82,7 +85,7 @@ DMA.prototype.doWriteReg0 = function(val) {
         this.dataHandlers.push(function(b) {
             that.portAStart &= 0x00ff;
             that.portAStart |= (b & 0xff) << 8;
-            that.log("port A start = 0x" + that.portAStart.toString(16));
+            that.log("WR0 port A start = 0x" + that.portAStart.toString(16));
         });
     }
     
@@ -99,7 +102,7 @@ DMA.prototype.doWriteReg0 = function(val) {
         this.dataHandlers.push(function(b) {
             that.blockLength &= 0x00ff;
             that.blockLength |= (b & 0xff) << 8;
-            that.log("block length = " + that.blockLength);
+            that.log("WR0 block length = " + that.blockLength);
         });
     }
     
@@ -129,6 +132,36 @@ DMA.prototype.doWriteReg1 = function(val) {
         });
     }
     
+    this.log("WR1 port A dest=" +
+        this.portADest + ", delta=" + this.portADelta);
+}
+
+DMA.prototype.doWriteReg2 = function(val) {
+    this.portBDest = (val >> 3) & 1;
+    
+    switch ((val >> 4) & 3) {
+        case 0:
+            this.portBDelta = -1;
+            break;
+            
+        case 1:
+            this.portBDelta = 1;
+            break;
+            
+        default:
+            this.portBDelta = 0;
+    }
+    
+    if ((val & 0x40) != 0) {
+        this.dataHandlers.push(function(b) {
+            /* we don't implement detailed timing, so this byte
+             * is ignored for now
+             */
+        });
+    }
+    
+    this.log("WR2 port B dest=" +
+        this.portBDest + ", delta=" + this.portBDelta);
 }
 
 DMA.prototype.doWriteReg6 = function(val) {
