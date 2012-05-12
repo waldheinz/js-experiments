@@ -29,6 +29,8 @@ function FDC() {
     
     this.regStatus  = this.STATUS.REQUEST_FOR_MASTER;
     this.regStatus3 = 0;
+    this.stepRateMillis = 0;
+    this.dmaMode = false;
     
     /* reading commands / arguments */
     this.currentCommand = 0;
@@ -98,11 +100,24 @@ FDC.prototype.writeCommand = function(val) {
     if (this.argsCount == -1) {
         /* read command */
         this.currentCommand = val;
+        this.log("command = " + this.currentCommand.toString(16));
         this.argsCount++;
     } else {
         this.args[this.argsCount++] = val;
         
         switch (this.currentCommand) {
+            case 0x03: /* specify */
+                if (this.argsCount == 2) {
+                    this.stepRateMillis = 16 - ((this.args[0] >> 4) & 0x0f);
+                    this.dmaMode        = ((this.args[ 1 ] & 0x01) == 0);
+                    
+                    this.log("specify srt="
+                        + this.stepRateMillis + ", dma=" + this.dmaMode);
+                    
+                    this.setIdle();
+                }
+                break;
+                
             case 0x04: /* sense drive status */
                 if (this.argsCount == 1) {
                     this.log("sense drive status");
@@ -134,7 +149,7 @@ FDC.prototype.writeCommand = function(val) {
                 break;
                 
             default:
-                throw "unknown command 0x" + val.toString(16);
+                throw "unknown command 0x" + this.currentCommand.toString(16);
         }
     }
 }
