@@ -49,7 +49,19 @@ FDC.prototype.readByte = function(sd) {
         return this.regStatus;
     } else {
         /* read data */
-        throw "read data";
+        
+        if (this.resultIdx < 0) {
+            throw "fdc empty";
+        } else {
+            var result = this.results[this.resultIdx--];
+            
+            if (this.resultIdx < 0) {
+                this.setIdle();
+            }
+            
+            return result;
+        }
+        
     }
 }
 
@@ -98,4 +110,16 @@ FDC.prototype.setResultMode = function() {
     this.regStatus |= this.STATUS.BUSY;
     this.regStatus |= this.STATUS.DATA_INPUT;
     this.regStatus |= this.STATUS.REQUEST_FOR_MASTER;
+}
+
+FDC.prototype.setIdle = function() {
+    this.regStatus &= this.STATUS.DRIVE_MASK;
+    this.regStatus |= this.STATUS.REQUEST_FOR_MASTER;
+    this.argsCount = -1;
+    this.resultIdx = -1;
+//    this.eotReached     = false;
+//    this.tcEnabled      = false;
+//    this.tcFired        = false;
+//    this.executingDrive = null;
+//    this.curCmd         = Command.INVALID;
 }

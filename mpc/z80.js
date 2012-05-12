@@ -900,7 +900,7 @@ Z80.prototype.instBlock = function(a, b) {
         case 2: /* block IN instructions */
             rHL = this.getRegHL();
             d = this.readPort();
-            this.mem.writeByte(rHl, d);
+            this.mem.writeByte(rHL, d);
             this.setRegPair(2, rHL + delta);
             
             this.regB       = (this.regB - 1) & 0xFF;
