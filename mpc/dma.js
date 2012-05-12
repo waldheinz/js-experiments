@@ -33,6 +33,13 @@ DMA = function() {
      */
     this.portADelta = 0;
     this.portBDelta = 0;
+    
+    /**
+     * Work registers.
+     */
+    this.portAddrA = 0;
+    this.portAddrB = 0;
+    this.byteCount = 0;
 }
 
 DMA.prototype.log = function(message) {
@@ -47,9 +54,10 @@ DMA.prototype.writeByte = function(val) {
             /* bit 7 is set */
 
             switch (val & 0x03) {
-                case 1:this.doWriteReg4(val);break;
-                case 2:this.doWriteReg5(val);break;
-                case 3:this.doWriteReg6(val);break;
+                case 0:this.doWriteReg3(val); break;
+                case 1:this.doWriteReg4(val); break;
+                case 2:this.doWriteReg5(val); break;
+                case 3:this.doWriteReg6(val); break;
                 default:throw "unknown command 0x" + val.toString(16);
             }
             
@@ -169,6 +177,23 @@ DMA.prototype.doWriteReg2 = function(val) {
         this.portBDest + ", delta=" + this.portBDelta);
 }
 
+DMA.prototype.doWriteReg3 = function(val) {
+    if (((val >> 2) & 0x07) != 0) {
+        throw "search/match not supported yet";
+    }
+    
+    if (((val >> 5) & 1) != 0) {
+        /* enable interrupt */
+        throw "EI";
+    }
+    
+    if (((val >> 6) & 1) != 0) {
+        /* start DMA */
+        throw "start";
+    }
+    
+}
+
 DMA.prototype.doWriteReg4 = function(val) {
     var that = this;
     
@@ -229,6 +254,13 @@ DMA.prototype.doWriteReg6 = function(val) {
 //            this.resetAutoRepeat();
 //            this.resetWait();
             /* reset port A/B to standard U880 timing */
+            break;
+            
+        case 0xcf:
+            this.log("load");
+            this.portAddrA = this.portAStart;
+            this.portAddrB = this.portBStart;
+            this.byteCount = this.blockLength;
             break;
             
         default:
