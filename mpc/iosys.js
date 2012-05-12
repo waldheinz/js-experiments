@@ -9,6 +9,13 @@ function Z80PIOPort(name) {
     this.waitMask = false;
     this.regMask = 0;
     this.regDataOut = 0;
+    this.readDataFunc = function() {
+        throw (this.name + ": no data read function");
+    }
+    
+    this.writeDataFunc = function(val) {
+        throw (this.name + ": no data write function");
+    }
 }
 
 function Z80PIO(name) {
@@ -20,12 +27,15 @@ function Z80PIO(name) {
 
 Z80PIOPort.prototype.readData = function() {
     console.log(this.name + ": read data ");
-    throw "not yet";
+    var input = this.readDataFunc() & this.regMask;
+    input |= this.regDataOut & ~ this.regMask;
+    return input;
 }
 
 Z80PIOPort.prototype.writeData = function(val) {
-    console.log(this.name + ": set data " + val.toString(16));
+    console.log(this.name + ": set data " + val.toString(2) + "b");
     this.regDataOut = val;
+    this.writeDataFunc(val);
 }
 
 Z80PIOPort.prototype.writeCtrl = function(val) {
@@ -116,10 +126,24 @@ Z80CTC.prototype.writeByte = function(port, val) {
  * IOSys
  */
 
-function IOSys(gdc) {
+function IOSys(gdc, fdc) {
     this.gdc = gdc;
+    this.fdc = fdc;
     this.ctc_21_1 = new Z80CTC("CTC_21.1");
     this.pio_13 = new Z80PIO("PIO_13");
+    
+    this.pio_13.portA.readDataFunc = function() {
+        if (fdc.isInterruptRequested()) {
+            return 1 << 7;
+        } else {
+            return 0;
+        }
+    }
+    
+    this.pio_13.portA.writeDataFunc = function(val) {
+        var mode = val & 7; /* goes to X2.1 Mo0 - Mo2, Mo0 - Mo1 used in FDC */
+    }
+    
     this.sio_18_1 = new Z80SIO("SIO_18.1");
 }
 

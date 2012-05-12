@@ -8,6 +8,7 @@
         <script src="memory.js"></script>
         <script src="iosys.js"></script>
         <script src="gdc.js"></script>
+        <script src="fdc.js"></script>
         <script src="z80debug.js"></script>
     </head>
     
@@ -17,7 +18,8 @@
         
         <script>
             var gdc = new GDC($('#screen').get(0));
-            var iosys = new IOSys(gdc);
+            var fdc = new FDC();
+            var iosys = new IOSys(gdc, fdc);
             var mem = new Memory();
             
             var cpu = new Z80(mem, iosys);
