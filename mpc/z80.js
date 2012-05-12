@@ -897,12 +897,27 @@ Z80.prototype.instBlock = function(a, b) {
             this.flag.three = ((result & BIT[3]) != 0);
             break;
             
+        case 2: /* block IN instructions */
+            rHL = this.getRegHL();
+            d = this.readPort();
+            this.mem.writeByte(rHl, d);
+            this.setRegPair(2, rHL + delta);
+            
+            this.regB       = (this.regB - 1) & 0xFF;
+            this.flag.sign  = ((this.regB & BIT[7]) != 0);
+            this.flag.zero  = (this.regB == 0);
+            repeat &= !this.flag.zero;
+            this.flag.n     = true;
+            this.flag.five  = ((this.regB & BIT[5]) != 0);
+            this.flag.three = ((this.regB & BIT[3]) != 0);
+            break;
+            
         case 3: /* block OUT instructions */
             this.regB       = (this.regB - 1) & 0xFF;
             this.flag.sign  = ((this.regB & BIT[7]) != 0);
             this.flag.zero  = (this.regB == 0);
             repeat &= !this.flag.zero;
-            this.flag.n     = true; /* yes, this does not depend on delta */
+            this.flag.n     = true;
             this.flag.five  = ((this.regB & BIT[5]) != 0);
             this.flag.three = ((this.regB & BIT[3]) != 0);
             this.iosys.writeByte(this.getRegBC(),
@@ -910,7 +925,8 @@ Z80.prototype.instBlock = function(a, b) {
             this.setRegPair(2, this.getRegHL() + delta);
             break;
             
-        default :throw "b = " + b;
+        default :
+            throw "b = " + b;
     }
     
     if (repeat) {

@@ -162,7 +162,8 @@ IOSys.prototype.readByte = function(port) {
         case 0xed: /* 11101101 : pio 13, port b */
             return this.pio_13.readData(p & 1);
             
-        case 0xf8: /* 11111000 : FDC_1 (CS_7) */
+        case 0xf8: /* 11111000 : FDC_1 status (CS_7) */
+        case 0xf9: /* 11111001 : FDC_1 data */
             return this.fdc.readByte(p & 1);
             
         default:
