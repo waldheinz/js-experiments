@@ -60,7 +60,7 @@ FDC.prototype.isInterruptRequested = function() {
 FDC.prototype.readByte = function(sd) {
     if (sd == 0) {
         /* read status */
-        this.log("read status");
+//        this.log("read status");
         return this.regStatus;
     } else {
         /* read data */
@@ -100,7 +100,6 @@ FDC.prototype.writeCommand = function(val) {
     if (this.argsCount == -1) {
         /* read command */
         this.currentCommand = val;
-        this.log("command = " + this.currentCommand.toString(16));
         this.argsCount++;
     } else {
         this.args[this.argsCount++] = val;
@@ -120,31 +119,13 @@ FDC.prototype.writeCommand = function(val) {
                 
             case 0x04: /* sense drive status */
                 if (this.argsCount == 1) {
-                    this.log("sense drive status");
-                    this.regStatus3 = this.args[0] & this.ARGMASK.HEAD_DRIVE_MASK;
-                    var fdd = this.getArg0Drive();
-                    
-                    if (fdd) {
-                        this.regStatus3 |= this.STATUS3.TWO_SIDE;
-                        
-                        if (fdd.getCylinder() == 0) {
-                            this.regStatus3 |= this.STATUS3.TRACK_0;
-                        }
-                        
-                        if (fdd.isReady()) {
-                            this.regStatus3 |= this.STATUS3.READY;
-                        }
-                        
-                        if (fdd.isReadOnly()) {
-                            this.regStatus3 |= this.STATUS3.WRITE_PROTECTED;
-                        }
-                    } else {
-                        this.log("sense unconnected drive " + (this.args[0] & 3));
-                    }
-                    
-                    this.results[0] = this.regStatus3;
-                    this.resultIdx = 0;
-                    this.setResultMode();
+                    this.doSenseDriveStatus();
+                }
+                break;
+                
+            case 0x07: /* recalibrate */
+                if (this.argsCount == 2) {
+                    this.doRecalibrate();
                 }
                 break;
                 
@@ -152,6 +133,39 @@ FDC.prototype.writeCommand = function(val) {
                 throw "unknown command 0x" + this.currentCommand.toString(16);
         }
     }
+}
+
+FDC.prototype.doRecalibrate = function() {
+    this.log("recalibrate");
+    this.setIdle();
+}
+
+FDC.prototype.doSenseDriveStatus = function() {
+    this.log("sense drive status");
+    this.regStatus3 = this.args[0] & this.ARGMASK.HEAD_DRIVE_MASK;
+    var fdd = this.getArg0Drive();
+
+    if (fdd) {
+        this.regStatus3 |= this.STATUS3.TWO_SIDE;
+
+        if (fdd.getCylinder() == 0) {
+            this.regStatus3 |= this.STATUS3.TRACK_0;
+        }
+
+        if (fdd.isReady()) {
+            this.regStatus3 |= this.STATUS3.READY;
+        }
+
+        if (fdd.isReadOnly()) {
+            this.regStatus3 |= this.STATUS3.WRITE_PROTECTED;
+        }
+    } else {
+        this.log("sense unconnected drive " + (this.args[0] & 3));
+    }
+
+    this.results[0] = this.regStatus3;
+    this.resultIdx = 0;
+    this.setResultMode();
 }
 
 FDC.prototype.setResultMode = function() {
