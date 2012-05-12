@@ -83,6 +83,10 @@ function GDC(contElem) {
     this.gdchrdCnt = 0;
 }
 
+GDC.prototype.log = function(message) {
+    //console.log("gdc: " + message);
+}
+
 GDC.prototype.readByte = function(port) {
     if (port == 0) {
         /* read status register bits:
@@ -99,7 +103,7 @@ GDC.prototype.readByte = function(port) {
         var result = 0;
         result |= (this.fifo.length == 16) ? 2 : 0;
         result |= (this.fifo.length ==  0) ? 4 : 0;
-        console.log("gdc: status read " + result.toString(2));
+        this.log("status read " + result.toString(2));
         return result;
     } else {
         /* read from FIDO */
@@ -117,7 +121,7 @@ GDC.prototype.writeByte = function(port, val) {
         /* command */
         
         if (val == 0) {
-            console.log("gdc: reset");
+            this.log("reset");
             this.mode = 0;
             this.paramByteCnt = 0;
         } else {
@@ -127,7 +131,7 @@ GDC.prototype.writeByte = function(port, val) {
                 case 0: /* 000xxxxx - BCTRL or SYNC */
                     if (((val >> 1) & 1) == 0) {
                         /* 0000110x - BCTRL */
-                        console.log("gdc: enable display");
+                        this.log("enable display");
                     } else {
                         throw "unimplemented SYNC";
                     }
@@ -141,7 +145,7 @@ GDC.prototype.writeByte = function(port, val) {
                         this.regRMWMode = val & 3;
                         this.wdatType = (val >> 3) & 3;
                         this.setDataMode(5);
-                        console.log("gdc: WDAT t=" + this.wdatType +
+                        this.log("WDAT t=" + this.wdatType +
                             ", m=" + this.regRMWMode);
                     } else {
                         throw "unimplemented DMAW";
@@ -154,27 +158,27 @@ GDC.prototype.writeByte = function(port, val) {
                     
                     switch (cmd_p2) {
                         case 0x6: /* 01000110 - ZOOM */
-                            console.log("gdc: ZOOM");
+                            this.log("ZOOM");
                             this.setDataMode(7);
                             break;
                             
                         case 0x7: /* 01000111 - PITCH */
-                            console.log("gdc: PITCH");
+                            this.log("PITCH");
                             this.setDataMode(3);
                             break;
                             
                         case 0x9: /* 01001001 - CURS */
-                            console.log("gdc: CURS");
+                            this.log("CURS");
                             this.setDataMode(4);
                             break;
                             
                         case 0xa: /* 01001010 - MASK */
-                            console.log("gdc: MASK");
+                            this.log("MASK");
                             this.setDataMode(2);
                             break;
                             
                         case 0xc: /* 01001100 - FIGS */
-                            console.log("gdc: FIGS");
+                            this.log("FIGS");
                             this.setDataMode(6);
                             break;
                             
@@ -196,7 +200,7 @@ GDC.prototype.writeByte = function(port, val) {
                                 break;
                                 
                             case 7: /* 0110111x - VSYNC */
-                                console.log("gdc: set vsync mode " + (val & 1));
+                                this.log("set vsync mode " + (val & 1));
                                 break;
                                 
                             default:
@@ -206,7 +210,7 @@ GDC.prototype.writeByte = function(port, val) {
                         /* 0111xxxx - PRAM */
                         this.mode = 1;
                         this.pramWritePos = val & 0xf;
-                        console.log("gdc: PRAM " + this.pramWritePos);
+                        this.log("PRAM " + this.pramWritePos);
                     }
                     
                     break;
@@ -245,7 +249,7 @@ GDC.prototype.writeByte = function(port, val) {
                     case 1:
                         this.regMask &= 0xff;
                         this.regMask |= (val & 0xff) << 8;
-                        console.log("gdc: mask is now " +
+                        this.log("mask is now " +
                             this.regMask.toString(2));
                         break;
                         
@@ -257,8 +261,7 @@ GDC.prototype.writeByte = function(port, val) {
                 
             case 3: /* PITCH */
                 this.regPitch = val;
-                console.log("gdc: pitch is now " +
-                    this.regPitch.toString() + " words");
+                this.log("pitch is now " + this.regPitch + " words");
                 break;
                 
             case 4: /* CURS */
@@ -284,7 +287,7 @@ GDC.prototype.writeByte = function(port, val) {
                 break;
                 
             case 5: /* WDAT */
-                console.log("gdc: WDAT data " + val.toString(16));
+                this.log("WDAT data " + val.toString(16));
                 
                 switch (this.wdatType) {
                     case 0:
@@ -358,7 +361,7 @@ GDC.prototype.writeByte = function(port, val) {
                 break;
                 
             case 7: /* ZOOM */
-                console.log("gdc: ignore set zoom = " + val);
+                this.log("ignore set zoom = " + val);
                 break;
                 
             default:
@@ -372,17 +375,17 @@ GDC.prototype.setMode = function(mode) {
     /* set operating mode (bits: 00CFIDGS) */
     
     this.displayMode = ((mode >> 4) & 2) | ((mode >> 1) & 1);
-    console.log("gdc: set display mode " + this.displayMode.toString(2));
+    this.log("set display mode " + this.displayMode.toString(2));
     
     this.videoMode = ((mode >> 2) & 2) | (mode & 1);
-    console.log("gdc: set video mode " + this.videoMode.toString(2));
+    this.log("set video mode " + this.videoMode.toString(2));
     
     if (this.videoMode == 1) {
         throw "illegal video mode";
     }
     
-    console.log("gdc: dram refresh is " + ((mode & 4) != 0));
-    console.log("gdc: paint during display is " + ((mode & 16) == 0));
+    this.log("dram refresh is " + ((mode & 4) != 0));
+    this.log("paint during display is " + ((mode & 16) == 0));
 }
 
 GDC.prototype.handleResetParamByte = function(val) {
@@ -393,7 +396,7 @@ GDC.prototype.handleResetParamByte = function(val) {
             
         case 1:
             this.regAW = val + 2;
-            console.log("gdc: display width is " + (this.regAW * 16));
+            this.log("display width is " + (this.regAW * 16));
             break;
             
         case 6:
@@ -402,7 +405,7 @@ GDC.prototype.handleResetParamByte = function(val) {
             
         case 7:
             this.regAL = this.regAL | ((val & 3) << 8);
-            console.log("gdc: display height is " + this.regAL);
+            this.log("display height is " + this.regAL);
             
             this.canvas.width = this.regAW * 16 * this.scale;
             this.canvas.height = this.regAL * this.scale;
@@ -420,32 +423,10 @@ GDC.prototype.logCursorPos = function() {
     var cx = (this.regEAD % this.regPitch ) + this.regdAD;
     var cy = Math.floor(this.regEAD / this.regPitch);
 
-    console.log("gdc: cursor is at (" + cx + ", " + cy + ")");
+    this.log("cursor is at (" + cx + ", " + cy + ")");
 }
 
 GDC.prototype.cmdGCHRD = function() {
-    
-//    if (this.gdchrdCnt++ > 1) throw "haaalt! stooop!";
-    
-    console.log(this.regDC);
-    console.log(this.regD);
-    console.log(this.regD2);
-    console.log(this.regDrawFlags.toString(2));
-    
-    console.log(this.regEAD);
-    console.log(this.regdAD);
-    console.log(this.regDrawDir.toString(2));
-    
-    
-    for (var i=0; i < 8; i++) {
-        var s = this.pram[i+8].toString(2);
-        
-        for (var ss = s.length; ss < 8; ss++) {
-            s = "0" + s;
-        }
-        
-        console.log(s);
-    }
     
     this.pramBit = 0;
     this.pramByte = 15;
@@ -518,9 +499,6 @@ GDC.prototype.cmdGCHRD = function() {
                 throw "unimplemented dir " + this.regDrawDir;
         }
     }
-    
-    console.log("gchrd done");
-    this.logCursorPos();
     
     this.paint();
 }
