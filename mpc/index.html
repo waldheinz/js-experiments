@@ -9,6 +9,7 @@
         <script src="iosys.js"></script>
         <script src="gdc.js"></script>
         <script src="fdc.js"></script>
+        <script src="dma.js"></script>
         <script src="z80debug.js"></script>
     </head>
     
@@ -18,10 +19,12 @@
         
         <script>
             var gdc = new GDC($('#screen').get(0));
+            
             var fdc = new FDC();
             fdc.attachDrive(0, new FDD("Drive 1"));
             
-            var iosys = new IOSys(gdc, fdc);
+            var dma = new DMA();
+            var iosys = new IOSys(gdc, fdc, dma);
             var mem = new Memory();
             
             var cpu = new Z80(mem, iosys);

@@ -126,9 +126,10 @@ Z80CTC.prototype.writeByte = function(port, val) {
  * IOSys
  */
 
-function IOSys(gdc, fdc) {
+function IOSys(gdc, fdc, dma) {
     this.gdc = gdc;
     this.fdc = fdc;
+    this.dma = dma;
     this.ctc_21_1 = new Z80CTC("CTC_21.1");
     this.pio_13 = new Z80PIO("PIO_13");
     
@@ -202,6 +203,10 @@ IOSys.prototype.writeByte = function(port, val) {
             
         case 0xf9: /* 11111001 : FDC command */
             this.fdc.writeByte(p & 1, val);
+            break;
+            
+        case 0xff: /* 11111111 : DMA */
+            this.dma.writeByte(val);
             break;
             
         default:

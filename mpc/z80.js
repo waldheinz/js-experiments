@@ -314,7 +314,7 @@ Z80.prototype.step = function() {
                             return;
                             
                         case 1: /* RRCA */
-                            if( (this.regA & BIT[0]) != 0 ) {
+                            if ((this.regA & BIT[0]) != 0) {
                                 this.regA = (this.regA >> 1) | BIT[7];
                                 this.flag.carry = true;
                             } else {
