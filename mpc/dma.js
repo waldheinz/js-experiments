@@ -46,15 +46,13 @@ DMA.prototype.writeByte = function(val) {
         if ((val & 0x80) == 0x80) {
             /* bit 7 is set */
 
-            if ((val & 0x03) == 0x03) {
-                /* bit 0 and 1 are set */
-                this.doWriteReg6(val);
-            } else if ((val & 0x03) == 0x01) {
-                this.doWriteReg4(val);
-            } else {
-                throw "unknown command 0x" + val.toString(16);
+            switch (val & 0x03) {
+                case 1:this.doWriteReg4(val);break;
+                case 2:this.doWriteReg5(val);break;
+                case 3:this.doWriteReg6(val);break;
+                default:throw "unknown command 0x" + val.toString(16);
             }
-
+            
         } else {
             if ((val & 0x03) == 0) {
                 if ((val & 0x04) != 0) {
@@ -212,6 +210,14 @@ DMA.prototype.doWriteReg4 = function(val) {
         });
     }
     
+}
+
+DMA.prototype.doWriteReg5 = function(val) {
+    var rdy = (val >> 3) & 1;
+    var ce  = (val >> 4) & 1;
+    var res = (val >> 5) & 1;
+    
+    this.log("WR5 rdy=" + rdy + ", ce=" + ce + ", restart=" + res);
 }
 
 DMA.prototype.doWriteReg6 = function(val) {
