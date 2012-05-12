@@ -10,12 +10,22 @@ DMA = function() {
     this.operation = 0;
     
     /**
-     * 0 = Port B -> Port A, 1 = Port A -> Port B
+     * 0 = port B -> port A, 1 = port A -> port B
      */
     this.direction = 0;
     
     this.blockLength = 0;
     this.portAStart = 0;
+    
+    /**
+     * 0 = memory, 1 = I/O port
+     */
+    this.portADest = 0;
+    
+    /**
+     * Port A increment, should be 0, 1 or -1.
+     */
+    this.portADelta = 0;
 }
 
 DMA.prototype.log = function(message) {
@@ -39,7 +49,11 @@ DMA.prototype.writeByte = function(val) {
         } else {
 
             if ((val & 0x03) == 0) {
-                throw "unknown command 0x" + val.toString(16);
+                if ((val & 0x04) == 0x04) {
+                    this.doWriteReg1(val);
+                } else {
+                    throw "unknown command 0x" + val.toString(16);
+                }
             } else {
                 this.doWriteReg0(val);
             }
@@ -86,6 +100,32 @@ DMA.prototype.doWriteReg0 = function(val) {
             that.blockLength &= 0x00ff;
             that.blockLength |= (b & 0xff) << 8;
             that.log("block length = " + that.blockLength);
+        });
+    }
+    
+}
+
+DMA.prototype.doWriteReg1 = function(val) {
+    this.portADest = (val >> 3) & 1;
+    
+    switch ((val >> 4) & 3) {
+        case 0:
+            this.portADelta = -1;
+            break;
+            
+        case 1:
+            this.portADelta = 1;
+            break;
+            
+        default:
+            this.portADelta = 0;
+    }
+    
+    if ((val & 0x40) != 0) {
+        this.dataHandlers.push(function(b) {
+            /* we don't implement detailed timing, so this byte
+             * is ignored for now
+             */
         });
     }
     
