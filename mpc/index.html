@@ -19,6 +19,8 @@
         <script>
             var gdc = new GDC($('#screen').get(0));
             var fdc = new FDC();
+            fdc.attachDrive(0, new FDD("Drive 1"));
+            
             var iosys = new IOSys(gdc, fdc);
             var mem = new Memory();
             

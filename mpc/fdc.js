@@ -12,6 +12,13 @@ function FDC() {
         DRIVE_MASK          : 0x0f
     }
     
+    this.STATUS3 = {
+        WRITE_PROTECTED     : 0x40,
+        READY               : 0x20,
+        TRACK_0             : 0x10,
+        TWO_SIDE            : 0x08
+    }
+    
     this.ARGMASK = {
         SK_MASK             : 0x20,
         MT_MASK             : 0x80,
@@ -32,10 +39,16 @@ function FDC() {
     this.results = new Uint8Array(7);
     
     this.interruptRequested = false;
+    
+    this.fdds = new Array(4); /* the connected floppy disk drives */
 }
 
 FDC.prototype.log = function(message) {
     console.log("fdc: " + message);
+}
+
+FDC.prototype.attachDrive = function(idx, fdd) {
+    this.fdds[idx] = fdd;
 }
 
 FDC.prototype.isInterruptRequested = function() {
@@ -75,6 +88,10 @@ FDC.prototype.writeByte = function(sd, val) {
     }
 }
 
+FDC.prototype.getArg0Drive = function() {
+    return this.fdds[this.args[0] & 0x03];
+}
+
 FDC.prototype.writeCommand = function(val) {
     this.regStatus |= this.STATUS.BUSY;
     
@@ -90,6 +107,26 @@ FDC.prototype.writeCommand = function(val) {
                 if (this.argsCount == 1) {
                     this.log("sense drive status");
                     this.regStatus3 = this.args[0] & this.ARGMASK.HEAD_DRIVE_MASK;
+                    var fdd = this.getArg0Drive();
+                    
+                    if (fdd) {
+                        this.regStatus3 |= this.STATUS3.TWO_SIDE;
+                        
+                        if (fdd.getCylinder() == 0) {
+                            this.regStatus3 |= this.STATUS3.TRACK_0;
+                        }
+                        
+                        if (fdd.isReady()) {
+                            this.regStatus3 |= this.STATUS3.READY;
+                        }
+                        
+                        if (fdd.isReadOnly()) {
+                            this.regStatus3 |= this.STATUS3.WRITE_PROTECTED;
+                        }
+                    } else {
+                        this.log("sense unconnected drive " + (this.args[0] & 3));
+                    }
+                    
                     this.results[0] = this.regStatus3;
                     this.resultIdx = 0;
                     this.setResultMode();
@@ -122,4 +159,25 @@ FDC.prototype.setIdle = function() {
 //    this.tcFired        = false;
 //    this.executingDrive = null;
 //    this.curCmd         = Command.INVALID;
+}
+
+
+/**
+ * A Floppy Disk Drive.
+ */
+function FDD(name) {
+    this.name = name;
+    this.cylinder = 0;
+}
+
+FDD.prototype.getCylinder = function() {
+    return this.cylinder;
+}
+
+FDD.prototype.isReady = function() {
+    return true;
+}
+
+FDD.prototype.isReadOnly = function() {
+    return false;
 }
