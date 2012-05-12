@@ -313,6 +313,22 @@ Z80.prototype.step = function() {
                             this.instTStates += 4;
                             return;
                             
+                        case 1: /* RRCA */
+                            if( (this.regA & BIT[0]) != 0 ) {
+                                this.regA = (this.regA >> 1) | BIT[7];
+                                this.flag.carry = true;
+                            } else {
+                                this.regA >>= 1;
+                                this.flag.carry = false;
+                            }
+                            
+                            this.flag.half  = false;
+                            this.flag.n     = false;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.instTStates += 4;
+                            return;
+                            
                         case 2: /* RLA */
                             this.regA <<= 1;
                             
