@@ -184,12 +184,14 @@ DMA.prototype.doWriteReg3 = function(val) {
     
     if (((val >> 5) & 1) != 0) {
         /* enable interrupt */
-        throw "EI";
+//        throw "EI";
+        this.log("INTERRUPT")
     }
     
     if (((val >> 6) & 1) != 0) {
         /* start DMA */
-        throw "start";
+        this.log("START");
+//        throw "start";
     }
     
 }

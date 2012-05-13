@@ -60,7 +60,6 @@ FDC.prototype.isInterruptRequested = function() {
 FDC.prototype.readByte = function(sd) {
     if (sd == 0) {
         /* read status */
-//        this.log("read status");
         return this.regStatus;
     } else {
         /* read data */
@@ -129,9 +128,34 @@ FDC.prototype.writeCommand = function(val) {
                 }
                 break;
                 
+            case 0x46: /* read data */
+                if (this.argsCount == 9) {
+                    this.doReadFromDisk();
+                }
+                break;
+                
             default:
                 throw "unknown command 0x" + this.currentCommand.toString(16);
         }
+    }
+}
+
+FDC.prototype.doReadFromDisk = function() {
+    this.setExecMode();
+    this.clearStatusRegs0to2();
+    
+    this.sectorIdCyl      = this.args[2];
+    this.sectorIdHead     = this.args[3];
+    this.sectorIdRec      = this.args[4];
+    this.sectorIdSizeCode = this.args[5];
+    
+    var fdd = this.fdds[this.args[1] & 0x03];
+    
+    if (fdd && false) {
+        
+    } else {
+        this.regStatus0 = 0xd8 | (this.args[1] & 0x07);
+        this.stopExecution();
     }
 }
 
@@ -166,6 +190,39 @@ FDC.prototype.doSenseDriveStatus = function() {
     this.results[0] = this.regStatus3;
     this.resultIdx = 0;
     this.setResultMode();
+}
+
+FDC.prototype.stopExecution = function() {
+//    this.executingDrive = null;
+    this.results[0]   = this.sectorIdSizeCode;
+    this.results[1]   = this.sectorIdRec;
+    this.results[2]   = this.sectorIdHead;
+    this.results[3]   = this.sectorIdCyl;
+    this.results[4]   = this.statusReg2;
+    this.results[5]   = this.statusReg1;
+    this.results[6]   = this.statusReg0;
+    this.resultIdx    = 6;
+    this.regStatus0 &= 0xF8;
+    this.regStatus0 |= (this.args[1] & 0x07);
+//    this.interruptReq = true;
+    this.setResultMode();
+}
+
+FDC.prototype.clearStatusRegs0to2 = function() {
+    this.regStatus0 = 0;
+    this.regStatus1 = 0;
+    this.regStatus2 = 0;
+}
+
+FDC.prototype.setExecMode = function() {
+    this.regStatus &= 0x3F;		// kein Datentransfer moeglich
+    this.regStatus |= 0x10;		// Busy
+    
+//    if (!this.dmaMode) {
+//        this.regStatus |= 0x20;
+//    }
+    
+//    this.tcFired = false;
 }
 
 FDC.prototype.setResultMode = function() {
