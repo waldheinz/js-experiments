@@ -10,6 +10,7 @@
         <script src="gdc.js"></script>
         <script src="fdc.js"></script>
         <script src="dma.js"></script>
+        <script src="teleDisk.js"></script>
         <script src="z80debug.js"></script>
     </head>
     
@@ -21,7 +22,13 @@
             var gdc = new GDC($('#screen').get(0));
             
             var fdc = new FDC();
-            fdc.attachDrive(0, new FDD("Drive 1"));
+            var fdd = new FDD("Drive 1");
+            fdc.attachDrive(0, fdd);
+            
+            var systemDisk = new TeleDisk("disks/scp_m_2.89.td0");
+            systemDisk.load(function() {
+                fdd.loadDisk(systemDisk);
+            });
             
             var dma = new DMA();
             var iosys = new IOSys(gdc, fdc, dma);

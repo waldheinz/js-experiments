@@ -151,8 +151,8 @@ FDC.prototype.doReadFromDisk = function() {
     
     var fdd = this.fdds[this.args[1] & 0x03];
     
-    if (fdd && false) {
-        
+    if (fdd && fdd.isReady()) {
+//        throw ""
     } else {
         this.regStatus0 = 0xd8 | (this.args[1] & 0x07);
         this.stopExecution();
@@ -254,6 +254,11 @@ FDC.prototype.setIdle = function() {
 function FDD(name) {
     this.name = name;
     this.cylinder = 0;
+    this.disk = null;
+}
+
+FDD.prototype.log = function(message) {
+    console.log(this.name + ": " + message);
 }
 
 FDD.prototype.getCylinder = function() {
@@ -261,9 +266,14 @@ FDD.prototype.getCylinder = function() {
 }
 
 FDD.prototype.isReady = function() {
-    return true;
+    return (this.disk != null);
 }
 
 FDD.prototype.isReadOnly = function() {
-    return false;
+    return false; // this.isReady() ? this.disk.isReadOnly() : true;
+}
+
+FDD.prototype.loadDisk = function(disk) {
+    this.disk = disk;
+    this.log("loaded disk " + disk.toString());
 }
