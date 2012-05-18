@@ -1013,6 +1013,8 @@ Z80.prototype.testCondition = function(c) {
         case 3  :return this.flag.carry;
         case 4  :return !this.flag.pv;
         case 5  :return this.flag.pv;
+        case 6  :return !this.flag.sign;
+        case 7  :return this.flag.sign;
         default :throw "unknown condition " + c;
     }
 }
