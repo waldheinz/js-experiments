@@ -151,7 +151,7 @@ FDC.prototype.doReadFromDisk = function() {
     
     var fdd = this.fdds[this.args[1] & 0x03];
     
-    if (fdd && fdd.isReady()) {
+    if (fdd && fdd.isReady() && false) {
 //        throw ""
     } else {
         this.regStatus0 = 0xd8 | (this.args[1] & 0x07);

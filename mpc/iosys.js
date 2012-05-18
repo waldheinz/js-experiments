@@ -80,27 +80,6 @@ Z80PIO.prototype.writeCtrl = function(port, val) {
 }
 
 /*
- * SIO
- */
-
-function Z80SIO(name) {
-    this.name = name;
-}
-
-Z80SIO.prototype.readByte = function(port) {
-    var p = port & 3;
-    
-    console.log(this.name + ": read " + p.toString(2));
-    return 0xff;
-}
-
-Z80SIO.prototype.writeByte = function(port, val) {
-    var p = port & 3;
-    
-    console.log(this.name + ": write " + p.toString(2) + " = " + val);
-}
-
-/*
  * CTC
  */
 
@@ -126,7 +105,7 @@ Z80CTC.prototype.writeByte = function(port, val) {
  * IOSys
  */
 
-function IOSys(gdc, fdc, dma) {
+function IOSys(gdc, fdc, dma, sio_18_1) {
     this.gdc = gdc;
     this.fdc = fdc;
     this.dma = dma;
@@ -145,7 +124,7 @@ function IOSys(gdc, fdc, dma) {
         var mode = val & 7; /* goes to X2.1 Mo0 - Mo2, Mo0 - Mo1 used in FDC */
     }
     
-    this.sio_18_1 = new Z80SIO("SIO_18.1");
+    this.sio_18_1 = sio_18_1;
 }
 
 IOSys.prototype.readByte = function(port) {

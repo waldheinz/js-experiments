@@ -4,12 +4,14 @@
         <title>KC85</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <script src="../js/jquery-1.7.1.min.js"></script>
+        <script src="clock.js"></script>
         <script src="z80.js"></script>
         <script src="memory.js"></script>
         <script src="iosys.js"></script>
         <script src="gdc.js"></script>
         <script src="fdc.js"></script>
         <script src="dma.js"></script>
+        <script src="sio.js"></script>
         <script src="teleDisk.js"></script>
         <script src="z80debug.js"></script>
     </head>
@@ -19,6 +21,7 @@
         <div id="dbgState"></div>
         
         <script>
+            var clk = new Clock();
             var gdc = new GDC($('#screen').get(0));
             
             var fdc = new FDC();
@@ -31,7 +34,8 @@
             });
             
             var dma = new DMA();
-            var iosys = new IOSys(gdc, fdc, dma);
+            var sio_18_1 = new SIO("SIO_18.1");
+            var iosys = new IOSys(gdc, fdc, dma, sio_18_1);
             var mem = new Memory();
             
             var cpu = new Z80(mem, iosys);
