@@ -43,6 +43,7 @@ function SIO_Channel(name) {
     
     /** register pointer */
     this.regPtr = 0;
+    this.writeRegs = new Array(7); /* register 0 is not included here */
     
     this.transmitUnderrun = true;
 }
@@ -80,9 +81,24 @@ SIO_Channel.prototype.readReg = function() {
     throw "up";
 }
 
+SIO_Channel.prototype.reset = function() {
+    this.log("reset");
+    
+    this.regPtr = 0;
+    this.transmitUnderrun = true;
+    
+    for (var i=0; i < this.writeRegs.length; i++) {
+        this.writeRegs[i] = 0;
+    }
+}
+
 SIO_Channel.prototype.execCommand = function(cmd) {
     switch (cmd) {
         case 0: /* NOP */
+            break;
+            
+        case 3: /* channel reset */
+            this.reset();
             break;
             
         default:
@@ -101,16 +117,16 @@ SIO_Channel.prototype.resetCrc = function(crc) {
 }
 
 SIO_Channel.prototype.writeReg = function(val) {
-    this.log("write register " + this.regPtr + "=" + val.toString(16));
-    
     switch (this.regPtr) {
         case 0:
             this.regPtr = val & 7;
             this.execCommand((val >> 3) & 7);
             this.resetCrc((val >> 6) & 3);
             break;
-            
+        
         default:
-            throw "can't write register " + this.regPtr;
+            this.log("reg " + this.regPtr + " = 0x" + val.toString(16));
+            this.writeRegs[this.regPtr - 1] = val;
+            this.regPtr = 0;
     }
 }
