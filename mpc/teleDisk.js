@@ -52,11 +52,17 @@ TeleDisk.prototype.checkHeader = function(is) {
     is.skipBytes(2);
     var hasRemark = (is.nextByte() & 0x80) != 0;
     is.skipByte();
-    this.sides = is.nextByte();
+    var sideCount = is.nextByte();
     is.skipBytes(2); /* CRC */
     
-    if ((this.sides < 1) || (this.sides > 2)) {
+    if ((sideCount < 1) || (sideCount > 2)) {
         throw "only support one or two sides, but found " + this.sides;
+    }
+    
+    this.sides = new Array(sideCount);
+    
+    for (var i=0; i < sideCount; i++) {
+        this.sides[i] = [];
     }
     
     if (hasRemark) {
@@ -85,7 +91,7 @@ TeleDisk.prototype.checkHeader = function(is) {
         this.log("created on " + day + "." + month + "." + year + ", " +
             hour + ":" + minute + ":" + second);
     } else {
-        this.log("disk has no remark section");
+        this.log("disk image has no remark section");
     }
 }
 
@@ -96,7 +102,6 @@ TeleDisk.prototype.readSector = function(is, secBuf) {
         var encoding = is.nextByte();
         var pos = 0;
         len--;
-        console.log("encoding = " + encoding);
         
         switch (encoding) {
             case 0:
@@ -108,7 +113,7 @@ TeleDisk.prototype.readSector = function(is, secBuf) {
                 
             case 1:
                 if (len >= 4) {
-		    var n  = is.nextByte();
+		    var n  = is.nextWord();
 		    var b0 = is.nextByte();
 		    var b1 = is.nextByte();
 		    len -= 4;
@@ -122,14 +127,10 @@ TeleDisk.prototype.readSector = function(is, secBuf) {
                 break;
                 
             case 2:
-//                console.log("case 2");
                 while (len >= 2) {
                     var t = is.nextByte();
                     n = is.nextByte();
                     len -= 2;
-                    
-//                    console.log("len=" + len + ", t=" + t + ", n=" + n + ", pos=" + pos);
-                    console.log("t = " + t);
                     
                     switch (t) {
                         case 0:
@@ -197,7 +198,6 @@ TeleDisk.prototype.parseTracks = function(is) {
         }
         
         for (var i=0; i < secCount; i++) {
-            this.log("reading sector " + i);
             var secTrack    = is.nextByte();
             var secHead     = is.nextByte();
             var secNum      = is.nextByte();
@@ -222,7 +222,14 @@ TeleDisk.prototype.parseTracks = function(is) {
             
             var crcError = ((secCtrl & 0x02) != 0);
             var deleted  = ((secCtrl & 0x04) != 0);
-            this.readSector(is, secBuf);
+            
+            if ((secCtrl & 0x30) == 0) {
+                this.readSector(is, secBuf);
+            } else {
+                throw "up";
+            }
+            
+            this.sides[secHead][secNum] = new Sector(secBuf, crcError, deleted);
         }
     }
 }
@@ -230,6 +237,12 @@ TeleDisk.prototype.parseTracks = function(is) {
 TeleDisk.prototype.parse = function(is) {
     this.checkHeader(is);
     this.parseTracks(is);
+}
+
+Sector = function(data, crcError, deleted) {
+    this.data = data;
+    this.crcError = crcError;
+    this.deleted = deleted;
 }
 
 /**
