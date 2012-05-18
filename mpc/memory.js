@@ -90,7 +90,7 @@ Memory.prototype.getByte = function(addr) {
     }
 }
 
-Memory.prototype.writeByte = function(addr, val) {
+Memory.prototype.writeByte = function(addr, val) {    
 //    console.log("MEM write 0x" + addr.toString(16) + " = 0x" + val.toString(16));
     
     val = val & 0xff;

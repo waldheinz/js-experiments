@@ -229,7 +229,13 @@ TeleDisk.prototype.parseTracks = function(is) {
                 throw "up";
             }
             
-            this.sides[secHead][secNum] = new Sector(secBuf, crcError, deleted);
+            var side = this.sides[secHead];
+            
+            if (side[secTrack] === undefined) {
+                side[secTrack] = [];
+            }
+            
+            side[secTrack].push(new Sector(secBuf, crcError, deleted));
         }
     }
 }
