@@ -125,6 +125,21 @@ function IOSys(gdc, fdc, dma, sio_18_1) {
     }
     
     this.sio_18_1 = sio_18_1;
+    
+    this.interruptSources = [
+        sio_18_1
+    ];
+}
+
+IOSys.prototype.getInterruptSource = function() {
+    for (var i=0; i < this.interruptSources.length; i++) {
+        var is = this.interruptSources[i];
+        if (is.interruptPending()) {
+            return is;
+        }
+    }
+    
+    return null;
 }
 
 IOSys.prototype.readByte = function(port) {
@@ -135,8 +150,9 @@ IOSys.prototype.readByte = function(port) {
         case 0x71: /* 01110001 */
             return this.gdc.readByte(port & 1);
             
+        case 0xe5: /* 11100101 */
         case 0xe7: /* 11100111 */
-            return this.sio_18_1.readByte(p);
+            return this.sio_18_1.readByte(p & 3);
             
         case 0xec: /* 11101100 : pio 13, port a */
         case 0xed: /* 11101101 : pio 13, port b */

@@ -104,11 +104,45 @@ Z80.prototype.run = function() {
     }
 }
 
+Z80.prototype.checkInterrupt = function() {
+    var is = this.iosys.getInterruptSource();
+    
+    if (!this.iff1) {
+        return false;
+    }
+    
+    if (is == null) {
+        return false;
+    } else {
+        this.iff1 = this.iff2 = false;
+        var iv = is.acceptInterrupt();
+        
+        switch (this.interruptMode) {
+            case 2:
+                var m = (this.regI << 8) | iv;
+                this.push(this.regPC);
+                this.regPC = this.getMemWord(m);
+                this.instTStates += 19;
+                break;
+                
+            default:
+                throw "unsupported IM " + this.interruptMode;
+        }
+    }
+}
+
 /**
  * see http://www.z80.info/decoding.htm
  */
 Z80.prototype.step = function() {
-    this.lastInstWasEIorDI = false;
+    if (this.lastInstWasEIorDI) {
+        this.lastInstWasEIorDI = false;
+    } else {
+        if (this.checkInterrupt()) {
+            return;
+        }
+    }
+    
     var op = this.nextByte();
     
     /* prefix bytes */

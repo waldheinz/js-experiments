@@ -11,6 +11,7 @@
         <script src="gdc.js"></script>
         <script src="fdc.js"></script>
         <script src="dma.js"></script>
+        <script src="keyboard.js"></script>
         <script src="sio.js"></script>
         <script src="teleDisk.js"></script>
         <script src="z80debug.js"></script>
@@ -35,6 +36,17 @@
             
             var dma = new DMA();
             var sio_18_1 = new SIO("SIO_18.1");
+            
+            var kbd = new Keyboard(sio_18_1.channels[1]);
+            
+            $(document).keydown(function(evt) {
+                kbd.keyDown(evt.keyCode);
+            });
+            
+            $(document).keyup(function(evt) {
+                kbd.keyUp(evt.keyCode);
+            });
+            
             var iosys = new IOSys(gdc, fdc, dma, sio_18_1);
             var mem = new Memory();
             

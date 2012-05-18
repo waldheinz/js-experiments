@@ -38,6 +38,26 @@ SIO.prototype.writeByte = function(port, val) {
     
 }
 
+SIO.prototype.interruptPending = function() {
+    return this.channels[0].intrPend || this.channels[1].intrPend;
+}
+
+SIO.prototype.acceptInterrupt = function() {
+    if (!this.interruptPending()) {
+        throw "up";
+    }
+    
+    /* determine IV */
+    var ivBase = this.channels[1].writeRegs[1]; 
+    var statusAffectsVector = (this.channels[1].writeRegs[0] & 0x04) != 0
+    
+    if (statusAffectsVector) {
+        throw "up";
+    } else {
+        return ivBase;
+    }
+}
+
 function SIO_Channel(name) {
     this.name = name;
     
@@ -46,6 +66,9 @@ function SIO_Channel(name) {
     this.writeRegs = new Array(7); /* register 0 is not included here */
     
     this.transmitUnderrun = true;
+    this.intrPend = false;
+    this.recvBuff = new Uint8Array(3);
+    this.recvPos = 0;
 }
 
 SIO_Channel.prototype.log = function(message) {
@@ -55,8 +78,12 @@ SIO_Channel.prototype.log = function(message) {
 SIO_Channel.prototype.getStatusReg = function() {
     var result = 0;
     
-    result |= 0 << 0; /* receive character available */
-    result |= 0 << 1; /* interrupt pending */
+     /* receive character available */
+    result |= ((this.recvPos != 0) ? 1 : 0) << 0;
+    
+     /* interrupt pending */
+    result |= (this.intrPend ? 1 : 0) << 1;
+    
     result |= 1 << 2; /* transmit buffer empty */
     result |= 0 << 3; /* DCD (data carrier detect) */
     result |= 0 << 4; /* sync / hunt */
@@ -86,6 +113,8 @@ SIO_Channel.prototype.reset = function() {
     
     this.regPtr = 0;
     this.transmitUnderrun = true;
+    this.intrPend = false;
+    this.recvPos = 0;
     
     for (var i=0; i < this.writeRegs.length; i++) {
         this.writeRegs[i] = 0;
@@ -129,4 +158,60 @@ SIO_Channel.prototype.writeReg = function(val) {
             this.writeRegs[this.regPtr - 1] = val;
             this.regPtr = 0;
     }
+}
+
+SIO_Channel.prototype.recvIntrMode = function() {
+    var r = this.writeRegs[0]; /* this is WR 1 */
+    return (r >> 3) & 3;
+}
+
+SIO_Channel.prototype.checkInterrupt = function() {
+    switch (this.recvIntrMode()) {
+        case 0: /* interrupts disabled */
+            this.intrPend = false;
+            break;
+            
+        case 1: /* first character only */
+            this.intrPend = (this.recvPos == 1);
+            break;
+            
+        case 2: /* intr. on all characters, parity error is special */
+        case 3: /* intr. on all characters, parity error is not special */
+            this.intrPend = (this.recvPos > 0);
+            break;
+            
+        default:
+            throw "up";
+    }
+}
+
+SIO_Channel.prototype.receivedByte = function(val) {
+    this.log("received byte 0x" + val.toString(16))
+    
+    this.recvBuff[this.recvPos++] = val;
+    
+    if (this.recvPos > 2) {
+        throw "recv overflow";
+    }
+    
+    this.checkInterrupt();
+}
+
+SIO_Channel.prototype.readData = function() {
+    this.log("read data");
+    
+    var result = this.recvBuff[0];
+    this.recvPos--;
+    
+    if (this.recvPos < 0) {
+        throw "up";
+    }
+    
+    for (var i=1; i < 3; i++) {
+        this.recvBuff[i-1] = this.recvBuff[i];
+    }
+    
+    this.checkInterrupt();
+    
+    return result;
 }
