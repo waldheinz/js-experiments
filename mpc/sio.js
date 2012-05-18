@@ -58,6 +58,13 @@ SIO.prototype.acceptInterrupt = function() {
     }
 }
 
+SIO.prototype.interruptFinish = function() {
+    this.channels[0].intrAccepted = false;
+    this.channels[0].intrPend = false;
+    this.channels[1].intrAccepted = false;
+    this.channels[1].intrPend = false;
+}
+
 function SIO_Channel(name) {
     this.name = name;
     
@@ -67,6 +74,7 @@ function SIO_Channel(name) {
     
     this.transmitUnderrun = true;
     this.intrPend = false;
+    this.intrAccepted = false;
     this.recvBuff = new Uint8Array(3);
     this.recvPos = 0;
 }
@@ -165,7 +173,15 @@ SIO_Channel.prototype.recvIntrMode = function() {
     return (r >> 3) & 3;
 }
 
-SIO_Channel.prototype.checkInterrupt = function() {
+SIO_Channel.prototype.receivedByte = function(val) {
+    this.log("received byte 0x" + val.toString(16))
+    
+    this.recvBuff[this.recvPos++] = val;
+    
+    if (this.recvPos > 2) {
+        throw "recv overflow";
+    }
+    
     switch (this.recvIntrMode()) {
         case 0: /* interrupts disabled */
             this.intrPend = false;
@@ -177,24 +193,12 @@ SIO_Channel.prototype.checkInterrupt = function() {
             
         case 2: /* intr. on all characters, parity error is special */
         case 3: /* intr. on all characters, parity error is not special */
-            this.intrPend = (this.recvPos > 0);
+            this.intrPend = true;
             break;
             
         default:
             throw "up";
     }
-}
-
-SIO_Channel.prototype.receivedByte = function(val) {
-    this.log("received byte 0x" + val.toString(16))
-    
-    this.recvBuff[this.recvPos++] = val;
-    
-    if (this.recvPos > 2) {
-        throw "recv overflow";
-    }
-    
-    this.checkInterrupt();
 }
 
 SIO_Channel.prototype.readData = function() {
@@ -210,8 +214,6 @@ SIO_Channel.prototype.readData = function() {
     for (var i=1; i < 3; i++) {
         this.recvBuff[i-1] = this.recvBuff[i];
     }
-    
-    this.checkInterrupt();
     
     return result;
 }

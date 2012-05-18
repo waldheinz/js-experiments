@@ -4,7 +4,7 @@ var BIT = [1, 2, 4, 8, 16, 32, 64, 128]
 function Z80(mem, iosys) {
     this.mem = mem;
     this.iosys = iosys;
-    this.interruptSources = [];
+    this.currentIs = null;
     
     /* registers */
     this.regA = 0x0;
@@ -105,17 +105,17 @@ Z80.prototype.run = function() {
 }
 
 Z80.prototype.checkInterrupt = function() {
-    var is = this.iosys.getInterruptSource();
-    
     if (!this.iff1) {
         return false;
     }
     
-    if (is == null) {
+    this.currentIs = this.iosys.getInterruptSource();
+    
+    if (this.currentIs == null) {
         return false;
     } else {
         this.iff1 = this.iff2 = false;
-        var iv = is.acceptInterrupt();
+        var iv = this.currentIs.acceptInterrupt();
         
         switch (this.interruptMode) {
             case 2:
@@ -128,6 +128,8 @@ Z80.prototype.checkInterrupt = function() {
             default:
                 throw "unsupported IM " + this.interruptMode;
         }
+        
+        return true;
     }
 }
 
@@ -819,15 +821,8 @@ Z80.prototype.stepPrefixED = function() {
                     
                     if (y == 1) {
                         /* RETI extra handling */
-                        intrLoop:
-                        for (var i=0; i < this.interruptSources.length; i++) {
-                            var is = this.interruptSources[i];
-                            
-                            if (is.isIntrAccepted()) {
-                                is.intrFinish();
-                                break intrLoop;
-                            }
-                        }
+                        this.currentIs.interruptFinish();
+                        this.currentIs = null;
                     }
                     
                     return;
