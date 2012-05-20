@@ -1,4 +1,36 @@
 
+"use strict";
+
+function Signal(name) {
+    this.name = name;
+    this.asserted = false;
+    this.listeners = [];
+}
+
+Signal.prototype.assert = function() {
+    if (this.asserted) {
+        throw "already asserted";
+    }
+    
+    this.asserted = true;
+    
+    for (var i=0; i < this.listeners.length; i++) {
+        this.listeners[i](this);
+    }
+}
+
+Signal.prototype.wait = function(listener) {
+    this.listeners.push(listener);
+}
+
+Signal.prototype.isAsserted = function() {
+    return this.asserted;
+}
+
+Signal.prototype.toString = function() {
+    return "Signal [" + this.name + "]";
+}
+
 /*
  * PIO
  */
@@ -105,10 +137,10 @@ Z80CTC.prototype.writeByte = function(port, val) {
  * IOSys
  */
 
-function IOSys(gdc, fdc, sio_18_1) {
+function IOSys(memory, gdc, fdc, sio_18_1) {
     this.gdc = gdc;
     this.fdc = fdc;
-    this.dma = new DMA(this);
+    this.dma = new DMA(memory, this, fdc.sigReady);
     this.ctc_21_1 = new Z80CTC("CTC_21.1");
     this.pio_13 = new Z80PIO("PIO_13");
     
@@ -163,7 +195,7 @@ IOSys.prototype.readByte = function(port) {
             return this.fdc.readByte(p & 1);
             
         case 0xfd: /* 11111101 : DACK to FDC */
-            
+            return this.fdc.readDma();
             
         default:
             console.log("XXX unimplemented read port 0x" + p.toString(16));

@@ -46,9 +46,8 @@
                 kbd.keyUp(evt.keyCode);
             });
             
-            var iosys = new IOSys(gdc, fdc, sio_18_1);
             var mem = new Memory();
-            
+            var iosys = new IOSys(mem, gdc, fdc, sio_18_1);
             var cpu = new Z80(mem, iosys);
             var dbg = new Z80Debug(cpu, $('#dbgState').get(0));
             var history = [];

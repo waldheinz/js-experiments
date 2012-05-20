@@ -1,4 +1,6 @@
 
+"use strict";
+
 /**
  * The 8272 FDC (Floppy Disk Controller).
  */
@@ -36,13 +38,17 @@ function FDC() {
     this.currentCommand = 0;
     this.argsCount = -1;
     this.args = new Uint8Array(9);
-    
+    this.eotReached = false;
     this.resultIdx = 0;
     this.results = new Uint8Array(7);
     
     this.interruptRequested = false;
     
     this.fdds = new Array(4); /* the connected floppy disk drives */
+    this.sigReady = new Signal("FDC ready");
+    
+    this.activeDrive = null;
+    this.sectorStream = null;
 }
 
 FDC.prototype.log = function(message) {
@@ -140,6 +146,16 @@ FDC.prototype.writeCommand = function(val) {
     }
 }
 
+FDC.prototype.getArgDataLen = function() {
+    var sizeCode = this.args[5] & 0x0F;
+    
+    if (sizeCode > 0) {
+        return 128 << sizeCode;
+    } else {
+        return this.args[8];
+    }
+}
+
 FDC.prototype.doReadFromDisk = function() {
     this.setExecMode();
     this.clearStatusRegs0to2();
@@ -151,8 +167,9 @@ FDC.prototype.doReadFromDisk = function() {
     
     var fdd = this.fdds[this.args[1] & 0x03];
     
-    if (fdd && fdd.isReady() && false) {
-//        throw ""
+    if (fdd && fdd.isReady()) {
+        this.activeDrive = fdd;
+        this.sigReady.assert();
     } else {
         this.regStatus0 = 0xd8 | (this.args[1] & 0x07);
         this.stopExecution();
@@ -193,7 +210,7 @@ FDC.prototype.doSenseDriveStatus = function() {
 }
 
 FDC.prototype.stopExecution = function() {
-//    this.executingDrive = null;
+    //    this.executingDrive = null;
     this.results[0]   = this.sectorIdSizeCode;
     this.results[1]   = this.sectorIdRec;
     this.results[2]   = this.sectorIdHead;
@@ -204,7 +221,7 @@ FDC.prototype.stopExecution = function() {
     this.resultIdx    = 6;
     this.regStatus0 &= 0xF8;
     this.regStatus0 |= (this.args[1] & 0x07);
-//    this.interruptReq = true;
+    //    this.interruptReq = true;
     this.setResultMode();
 }
 
@@ -226,9 +243,9 @@ FDC.prototype.setExecMode = function() {
 }
 
 FDC.prototype.setResultMode = function() {
-//    this.dmaReq             = false;
-//    this.tStatesTillIOReq   = 0;
-//    this.tStatesTillOverrun = 0;
+    //    this.dmaReq             = false;
+    //    this.tStatesTillIOReq   = 0;
+    //    this.tStatesTillOverrun = 0;
     this.regStatus &= this.STATUS.DRIVE_MASK;
     this.regStatus |= this.STATUS.BUSY;
     this.regStatus |= this.STATUS.DATA_INPUT;
@@ -240,13 +257,66 @@ FDC.prototype.setIdle = function() {
     this.regStatus |= this.STATUS.REQUEST_FOR_MASTER;
     this.argsCount = -1;
     this.resultIdx = -1;
-//    this.eotReached     = false;
+    this.eotReached = false;
 //    this.tcEnabled      = false;
 //    this.tcFired        = false;
-//    this.executingDrive = null;
-//    this.curCmd         = Command.INVALID;
+    this.activeDrive = null;
+    this.currentCommand = 0;
 }
 
+FDC.prototype.getArgHead = function() {
+    return (this.args[0] >> 2) & 0x01;
+}
+
+FDC.prototype.nextSector = function() {
+    if (this.sectorIdRec == this.args[5]) {
+        if((this.currentCommand & 0x80) != 0 ) {
+            // Multi Track
+            if ((this.args[0] & 0x04) == 0 ) {
+                // Seite 0
+                this.sectorIdRec = 1;
+                this.args[0] |= 0x04;
+            } else {
+                // Seite 1
+                this.eotReached  = true;
+                this.sectorIdRec = 1;
+                this.sectorIdCyl++;
+                this.args[0] &= ~0x04;
+            }
+        } else {
+            this.eotReached  = true;
+            this.sectorIdRec = 1;
+            this.sectorIdCyl++;
+        }
+    } else {
+        this.sectorIdRec++;
+    }
+}
+
+FDC.prototype.readDma = function() {
+    if (!this.dmaMode) {
+        throw "not in dma mode";
+    }
+    
+    if (this.sectorStream == null) {
+        
+        var sec = this.activeDrive.readSector(
+            this.getArgHead(),
+            this.sectorIdCyl,
+            this.sectorIdRec);
+            
+        this.sectorStream = sec.getStream();
+        this.nextSector();
+    }
+    
+    var result = this.sectorStream.nextByte();
+    
+    if (!this.sectorStream.hasByte()) {
+        this.sectorStream = null;
+    }
+    
+    return result;
+}
 
 /**
  * A Floppy Disk Drive.
@@ -259,6 +329,14 @@ function FDD(name) {
 
 FDD.prototype.log = function(message) {
     console.log(this.name + ": " + message);
+}
+
+FDD.prototype.readSector = function(head, cyl, rec) {
+    this.log("reading " + head + ", " + cyl + ", " + rec);
+    
+    var cylinder = this.disk.sides[head][cyl];
+    console.log(cylinder[rec-1]);
+    return cylinder[rec-1];
 }
 
 FDD.prototype.getCylinder = function() {

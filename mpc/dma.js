@@ -1,6 +1,10 @@
 
-DMA = function(ioSys) {
+"use strict";
+
+function DMA(memory, ioSys, sigReady) {
+    this.memory = memory;
     this.ioSys = ioSys;
+    this.sigReady = sigReady;
     this.dataHandlers = [];
     
     this.reg0 = 0;
@@ -60,10 +64,10 @@ DMA.prototype.writeByte = function(val) {
             /* bit 7 is set */
 
             switch (val & 0x03) {
-                case 0:this.doWriteReg3(val); break;
-                case 1:this.doWriteReg4(val); break;
-                case 2:this.doWriteReg5(val); break;
-                case 3:this.doWriteReg6(val); break;
+                case 0:this.doWriteReg3(val);break;
+                case 1:this.doWriteReg4(val);break;
+                case 2:this.doWriteReg5(val);break;
+                case 3:this.doWriteReg6(val);break;
                 default:throw "unknown command 0x" + val.toString(16);
             }
             
@@ -278,6 +282,49 @@ DMA.prototype.doWriteReg6 = function(val) {
     }
 }
 
+DMA.prototype.readPortB = function() {
+    if (this.portBDest == 0) {
+        /* memory */
+        throw "up";
+    } else {
+        /* I/O */
+        var result = this.ioSys.readByte(this.portAddrB);
+        this.portAddrB += this.portBDelta;
+        return result;
+    }
+}
+
+DMA.prototype.writePortA = function(val) {
+    if (this.portADest == 0) {
+        /* memory */
+        this.memory.writeByte(this.portAddrA, val);
+        this.portAddrA += this.portADelta;
+    } else {
+        throw "mem write";
+    }
+}
+
+DMA.prototype.isReady = function(signal) {
+    while (true) {
+//        this.log(this.byteCount + " bytes remaining");
+        
+        if (this.direction == 0) {
+            /* B -> A */
+            this.writePortA(this.readPortB());
+        } else {
+            this.writePortB(this.readPortA());
+        }
+        
+        if ((--this.byteCount == 0) || !this.sigReady.isAsserted()) {
+            break;
+        }
+    }
+    
+    if (this.byteCount == 0) {
+        throw "done";
+    }
+}
+
 DMA.prototype.execTransfer = function() {
-    throw "up";
+    this.sigReady.wait(this.isReady.bind(this));
 }

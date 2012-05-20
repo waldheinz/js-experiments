@@ -1,7 +1,54 @@
 
+"use strict";
+
+
+/**
+ * Wraps an array so it can be used like a stream.
+ */
+function Stream(arr) {
+    this.arr = arr;
+    this.pos = 0;
+}
+
+Stream.prototype.hasByte = function() {
+    return (this.pos < this.arr.length);
+}
+
+Stream.prototype.nextByte = function() {
+    return this.arr[this.pos++];
+}
+
+Stream.prototype.nextWord = function() {
+    var b0 = this.nextByte();
+    var b1 = this.nextByte();
+    return (b1 << 8) | b0;
+}
+
+Stream.prototype.skipByte = function() {
+    this.pos++;
+}
+
+Stream.prototype.skipBytes = function(cnt) {
+    this.pos += cnt;
+}
+
+function Sector(data, crcError, deleted) {
+    this.data = data;
+    this.crcError = crcError;
+    this.deleted = deleted;
+}
+
+Sector.prototype.getStream = function() {
+    return new Stream(this.data);
+}
+
+Sector.prototype.toString = function() {
+    return "Sector [len=" + this.data.length + "]";
+}
+
 function TeleDisk(url) {
     this.url = url;
-    this.sides = 0;
+    this.sides = [];
 }
 
 TeleDisk.prototype.isReadOnly = function() {
@@ -243,36 +290,4 @@ TeleDisk.prototype.parseTracks = function(is) {
 TeleDisk.prototype.parse = function(is) {
     this.checkHeader(is);
     this.parseTracks(is);
-}
-
-Sector = function(data, crcError, deleted) {
-    this.data = data;
-    this.crcError = crcError;
-    this.deleted = deleted;
-}
-
-/**
- * Wraps an array so it can be used like a stream.
- */
-Stream = function(arr) {
-    this.arr = arr;
-    this.pos = 0;
-}
-
-Stream.prototype.nextByte = function() {
-    return this.arr[this.pos++];
-}
-
-Stream.prototype.nextWord = function() {
-    var b0 = this.nextByte();
-    var b1 = this.nextByte();
-    return (b1 << 8) | b0;
-}
-
-Stream.prototype.skipByte = function() {
-    this.pos++;
-}
-
-Stream.prototype.skipBytes = function(cnt) {
-    this.pos += cnt;
 }
