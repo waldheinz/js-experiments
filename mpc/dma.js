@@ -46,7 +46,12 @@ function DMA(memory, ioSys, sigReady) {
     this.portAddrB = 0;
     this.byteCount = 0;
     
-    this.interruptEnabled = false;
+    this.intEnabled = false;
+    this.intOnMatch = false;
+    this.intOnBlockEnd = false;
+    this.intPending = false;
+    this.intUnderService = false;
+    this.intVector = 0;
     
     /** 0 = byte, 1 = continuous, 2 = burst */
     this.transferMode = 0;
@@ -54,6 +59,10 @@ function DMA(memory, ioSys, sigReady) {
 
 DMA.prototype.log = function(message) {
     console.log("DMA: " + message);
+}
+
+DMA.prototype.interruptPending = function() {
+    return this.intPending;
 }
 
 DMA.prototype.writeByte = function(val) {
@@ -193,14 +202,13 @@ DMA.prototype.doWriteReg3 = function(val) {
     }
     
     if ((val & 0x20) == 0x20) {
-        this.interruptEnabled = true;
+        this.intEnabled = true;
     }
     
     if ((val & 0x40) == 0x40) {
         /* start DMA */
         
         this.execTransfer();
-        
     }
     
 }
@@ -234,6 +242,21 @@ DMA.prototype.doWriteReg4 = function(val) {
         this.dataHandlers.push(function(b) {
             that.log("WR4 interrupt control = " + b.toString(16));
             
+            that.intOnMatch = (b & 0x01) == 0x01;
+            that.intOnBlockEnd = (b & 0x02) == 0x02;
+            
+            if ((b & 0x04) == 0x04) {
+                throw "pulse requested";
+            }
+            
+            if ((b & 0x40) == 0x40) {
+                throw "int on ready";
+            }
+            
+            if ((b & 0x20) == 0x20) {
+                throw "mod. int vector";
+            }
+            
             if ((b & 0x08) != 0) {
                 that.dataHandlers.push(function(b) {
                     that.log("WR4 pulse control = " + b.toString(16));
@@ -242,10 +265,9 @@ DMA.prototype.doWriteReg4 = function(val) {
             
             if ((b & 0x10) != 0) {
                 that.dataHandlers.push(function(b) {
-                    that.log("WR4 IV = " + b.toString(16));
+                    that.intVector = b;
                 });
             }
-            
         });
     }
     
@@ -261,9 +283,18 @@ DMA.prototype.doWriteReg5 = function(val) {
 
 DMA.prototype.doWriteReg6 = function(val) {
     switch (val) {
+        case 0xa3:
+            this.log("reset and disable interrupts")
+            this.intUnderService = false;
+            this.intPending = false;
+            this.intEnabled = false;
+            break;
+            
         case 0xc3:
             this.log("reset");
-            this.interruptEnabled = false;
+            this.intUnderService = false;
+            this.intPending = false;
+            this.intEnabled = false;
 //            this.resetBus();
 //            this.resetAutoRepeat();
 //            this.resetWait();
@@ -315,14 +346,29 @@ DMA.prototype.isReady = function(signal) {
             this.writePortB(this.readPortA());
         }
         
-        if ((--this.byteCount == 0) || !this.sigReady.isAsserted()) {
+        if ((--this.byteCount == -1) || !this.sigReady.isAsserted()) {
             break;
         }
     }
     
-    if (this.byteCount == 0) {
-        throw "done";
+    if (this.byteCount == -1) {
+        if (this.intEnabled && this.intOnBlockEnd) {
+            this.intPending = true;
+            this.log("XXXXXXX implement TC to FDC");
+        } else {
+            throw "up";
+        }
     }
+}
+
+DMA.prototype.acceptInterrupt = function() {
+    this.intUnderService = true;
+    return this.intVector;
+}
+
+DMA.prototype.interruptFinish = function() {
+    this.intUnderService = false;
+    this.intPending = false;
 }
 
 DMA.prototype.execTransfer = function() {
