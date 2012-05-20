@@ -34,7 +34,6 @@
                 fdd.loadDisk(systemDisk);
             });
             
-            var dma = new DMA();
             var sio_18_1 = new SIO("SIO_18.1");
             
             var kbd = new Keyboard(sio_18_1.channels[1]);
@@ -47,7 +46,7 @@
                 kbd.keyUp(evt.keyCode);
             });
             
-            var iosys = new IOSys(gdc, fdc, dma, sio_18_1);
+            var iosys = new IOSys(gdc, fdc, sio_18_1);
             var mem = new Memory();
             
             var cpu = new Z80(mem, iosys);

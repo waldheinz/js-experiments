@@ -105,10 +105,10 @@ Z80CTC.prototype.writeByte = function(port, val) {
  * IOSys
  */
 
-function IOSys(gdc, fdc, dma, sio_18_1) {
+function IOSys(gdc, fdc, sio_18_1) {
     this.gdc = gdc;
     this.fdc = fdc;
-    this.dma = dma;
+    this.dma = new DMA(this);
     this.ctc_21_1 = new Z80CTC("CTC_21.1");
     this.pio_13 = new Z80PIO("PIO_13");
     
@@ -161,6 +161,9 @@ IOSys.prototype.readByte = function(port) {
         case 0xf8: /* 11111000 : FDC_1 status (CS_7) */
         case 0xf9: /* 11111001 : FDC_1 data */
             return this.fdc.readByte(p & 1);
+            
+        case 0xfd: /* 11111101 : DACK to FDC */
+            
             
         default:
             console.log("XXX unimplemented read port 0x" + p.toString(16));

@@ -1,5 +1,6 @@
 
-DMA = function() {
+DMA = function(ioSys) {
+    this.ioSys = ioSys;
     this.dataHandlers = [];
     
     this.reg0 = 0;
@@ -40,6 +41,11 @@ DMA = function() {
     this.portAddrA = 0;
     this.portAddrB = 0;
     this.byteCount = 0;
+    
+    this.interruptEnabled = false;
+    
+    /** 0 = byte, 1 = continuous, 2 = burst */
+    this.transferMode = 0;
 }
 
 DMA.prototype.log = function(message) {
@@ -182,21 +188,23 @@ DMA.prototype.doWriteReg3 = function(val) {
         throw "search/match not supported yet";
     }
     
-    if (((val >> 5) & 1) != 0) {
-        /* enable interrupt */
-//        throw "EI";
-        this.log("INTERRUPT")
+    if ((val & 0x20) == 0x20) {
+        this.interruptEnabled = true;
     }
     
-    if (((val >> 6) & 1) != 0) {
+    if ((val & 0x40) == 0x40) {
         /* start DMA */
-        this.log("START");
-//        throw "start";
+        
+        this.execTransfer();
+        
     }
     
 }
 
 DMA.prototype.doWriteReg4 = function(val) {
+    this.transferMode = (val >> 5) & 0x03;
+    this.log("WR4 transfer mode = " + this.transferMode);
+    
     var that = this;
     
     if ((val & 0x04) != 0) {
@@ -251,7 +259,7 @@ DMA.prototype.doWriteReg6 = function(val) {
     switch (val) {
         case 0xc3:
             this.log("reset");
-//            this.resetIRQ();
+            this.interruptEnabled = false;
 //            this.resetBus();
 //            this.resetAutoRepeat();
 //            this.resetWait();
@@ -268,4 +276,8 @@ DMA.prototype.doWriteReg6 = function(val) {
         default:
             throw "unknown register 6 value " + val.toString(16);
     }
+}
+
+DMA.prototype.execTransfer = function() {
+    throw "up";
 }
