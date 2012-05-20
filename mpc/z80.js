@@ -52,6 +52,10 @@ function Z80(mem, iosys) {
     this.reset();
 }
 
+Z80.prototype.log = function(message) {
+    console.log("CPU: " + message);
+}
+
 Z80.prototype.reset = function() {
     console.log("CPU reset");
     
@@ -123,6 +127,7 @@ Z80.prototype.checkInterrupt = function() {
                 this.push(this.regPC);
                 this.regPC = this.getMemWord(m);
                 this.instTStates += 19;
+                this.log("handling INT " + this.currentIs + " with 0x" + this.regPC.toString(16));
                 break;
                 
             default:

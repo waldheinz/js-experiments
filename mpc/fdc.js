@@ -29,7 +29,8 @@ function FDC() {
         HEAD_DRIVE_MASK     : this.HEAD_MASK | this.DRIVE_MASK
     }
     
-    this.regStatus0  = this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatusMain = this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatus0 = 0;
     this.regStatus1 = 0;
     this.regStatus2 = 0;
     this.regStatus3 = 0;
@@ -85,8 +86,7 @@ FDC.prototype.readByte = function(sd) {
     if (sd == 0) {
         /* read status */
         this.log("read status");
-        this.interruptRequested = false;
-        return this.regStatus0;
+        return this.regStatusMain;
     } else {
         /* read data */
         this.log("read results");
@@ -94,6 +94,7 @@ FDC.prototype.readByte = function(sd) {
         if (this.resultIdx < 0) {
             throw "fdc empty";
         } else {
+            this.interruptRequested = false;
             var result = this.results[this.resultIdx--];
             
             if (this.resultIdx < 0) {
@@ -121,7 +122,7 @@ FDC.prototype.getArg0Drive = function() {
 }
 
 FDC.prototype.writeCommand = function(val) {
-    this.regStatus0 |= this.STATUS.BUSY;
+    this.regStatusMain |= this.STATUS.BUSY;
     
     if (this.argsCount == -1) {
         /* read command */
@@ -195,7 +196,7 @@ FDC.prototype.doReadFromDisk = function() {
         this.activeDrive = fdd;
         this.sigReady.assert();
     } else {
-        this.regStatus0 = 0xd8 | (this.args[0] & 0x07);
+        this.regStatusMain = 0xd8 | (this.args[0] & 0x07);
         this.stopExecution();
     }
 }
@@ -246,8 +247,8 @@ FDC.prototype.stopExecution = function() {
     this.results[5]   = this.regStatus1;
     this.results[6]   = this.regStatus0;
     this.resultIdx    = 6;
-    this.regStatus0 &= 0xF8;
-    this.regStatus0 |= (this.args[0] & 0x07);
+    this.regStatusMain &= 0xF8;
+    this.regStatusMain |= (this.args[0] & 0x07);
     this.interruptRequested = true;
     this.setResultMode();
 }
@@ -259,29 +260,27 @@ FDC.prototype.clearStatusRegs0to2 = function() {
 }
 
 FDC.prototype.setExecMode = function() {
-    this.regStatus0 &= 0x3F;		// kein Datentransfer moeglich
-    this.regStatus0 |= 0x10;		// Busy
+    this.regStatusMain &= 0x3F;		// kein Datentransfer moeglich
+    this.regStatusMain |= 0x10;		// Busy
     
-//    if (!this.dmaMode) {
-//        this.regStatus |= 0x20;
-//    }
-    
-//    this.tcFired = false;
+    if (!this.dmaMode) {
+        this.regStatusMain |= 0x20;
+    }
 }
 
 FDC.prototype.setResultMode = function() {
     //    this.dmaReq             = false;
     //    this.tStatesTillIOReq   = 0;
     //    this.tStatesTillOverrun = 0;
-    this.regStatus0 &= this.STATUS.DRIVE_MASK;
-    this.regStatus0 |= this.STATUS.BUSY;
-    this.regStatus0 |= this.STATUS.DATA_INPUT;
-    this.regStatus0 |= this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatusMain &= this.STATUS.DRIVE_MASK;
+    this.regStatusMain |= this.STATUS.BUSY;
+    this.regStatusMain |= this.STATUS.DATA_INPUT;
+    this.regStatusMain |= this.STATUS.REQUEST_FOR_MASTER;
 }
 
 FDC.prototype.setIdle = function() {
-    this.regStatus0 &= this.STATUS.DRIVE_MASK;
-    this.regStatus0 |= this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatusMain &= this.STATUS.DRIVE_MASK;
+    this.regStatusMain |= this.STATUS.REQUEST_FOR_MASTER;
     this.argsCount = -1;
     this.resultIdx = -1;
     this.eotReached = false;

@@ -217,3 +217,7 @@ SIO_Channel.prototype.readData = function() {
     
     return result;
 }
+
+SIO.prototype.toString = function() {
+    return "SIO [" + this.name + "]";
+}

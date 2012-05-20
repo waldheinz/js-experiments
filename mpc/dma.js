@@ -392,3 +392,7 @@ DMA.prototype.execTransfer = function() {
     this.waitReady = true;
     this.sigReady.wait(this.isReady.bind(this));
 }
+
+DMA.prototype.toString = function() {
+    return "DMA";
+}

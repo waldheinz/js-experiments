@@ -176,7 +176,7 @@ function IOSys(memory, gdc, fdc, sio_18_1) {
     this.sio_18_1 = sio_18_1;
     
     this.interruptSources = [
-        this.dma, sio_18_1
+        this.dma, this.sio_18_1
     ];
 }
 
