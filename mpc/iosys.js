@@ -9,13 +9,25 @@ function Signal(name) {
 
 Signal.prototype.assert = function() {
     if (this.asserted) {
-        throw "already asserted";
+        throw this.name + " already asserted";
     }
     
     this.asserted = true;
     
     for (var i=0; i < this.listeners.length; i++) {
         this.listeners[i](this);
+    }
+}
+
+Signal.prototype.setAsserted = function(val) {
+    if (this.asserted == val) return;
+    
+    this.asserted = val;
+    
+    if (this.asserted) {
+        for (var i=0; i < this.listeners.length; i++) {
+            this.listeners[i](this);
+        }
     }
 }
 
@@ -58,9 +70,9 @@ function Z80PIO(name) {
 }
 
 Z80PIOPort.prototype.readData = function() {
-    console.log(this.name + ": read data ");
     var input = this.readDataFunc() & this.regMask;
     input |= this.regDataOut & ~ this.regMask;
+    console.log(this.name + ": read data 0x" + input.toString(16));
     return input;
 }
 
@@ -141,6 +153,11 @@ function IOSys(memory, gdc, fdc, sio_18_1) {
     this.gdc = gdc;
     this.fdc = fdc;
     this.dma = new DMA(memory, this, fdc.sigReady);
+    
+    this.dma.sigIeo.wait(function(sig) {
+        fdc.tcFired();
+    });
+    
     this.ctc_21_1 = new Z80CTC("CTC_21.1");
     this.pio_13 = new Z80PIO("PIO_13");
     

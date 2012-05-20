@@ -29,7 +29,9 @@ function FDC() {
         HEAD_DRIVE_MASK     : this.HEAD_MASK | this.DRIVE_MASK
     }
     
-    this.regStatus  = this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatus0  = this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatus1 = 0;
+    this.regStatus2 = 0;
     this.regStatus3 = 0;
     this.stepRateMillis = 0;
     this.dmaMode = false;
@@ -41,9 +43,8 @@ function FDC() {
     this.eotReached = false;
     this.resultIdx = 0;
     this.results = new Uint8Array(7);
-    
     this.interruptRequested = false;
-    
+    this.tcEnabled = false;
     this.fdds = new Array(4); /* the connected floppy disk drives */
     this.sigReady = new Signal("FDC ready");
     
@@ -53,6 +54,23 @@ function FDC() {
 
 FDC.prototype.log = function(message) {
     console.log("fdc: " + message);
+}
+
+FDC.prototype.tcFired = function() {
+    this.log("TC fired");
+    
+    switch (this.currentCommand) {
+        case 0x46: /* read data */
+            if (this.tcEnabled) {
+                this.stopExecution();
+            } else {
+                throw "up";
+            }
+            break;
+            
+        default:
+            throw "can't handle command 0x" + this.currentCommand.toString(16);
+    }
 }
 
 FDC.prototype.attachDrive = function(idx, fdd) {
@@ -66,9 +84,12 @@ FDC.prototype.isInterruptRequested = function() {
 FDC.prototype.readByte = function(sd) {
     if (sd == 0) {
         /* read status */
-        return this.regStatus;
+        this.log("read status");
+        this.interruptRequested = false;
+        return this.regStatus0;
     } else {
         /* read data */
+        this.log("read results");
         
         if (this.resultIdx < 0) {
             throw "fdc empty";
@@ -100,7 +121,7 @@ FDC.prototype.getArg0Drive = function() {
 }
 
 FDC.prototype.writeCommand = function(val) {
-    this.regStatus |= this.STATUS.BUSY;
+    this.regStatus0 |= this.STATUS.BUSY;
     
     if (this.argsCount == -1) {
         /* read command */
@@ -113,7 +134,7 @@ FDC.prototype.writeCommand = function(val) {
             case 0x03: /* specify */
                 if (this.argsCount == 2) {
                     this.stepRateMillis = 16 - ((this.args[0] >> 4) & 0x0f);
-                    this.dmaMode        = ((this.args[ 1 ] & 0x01) == 0);
+                    this.dmaMode        = ((this.args[1] & 0x01) == 0);
                     
                     this.log("specify srt="
                         + this.stepRateMillis + ", dma=" + this.dmaMode);
@@ -157,21 +178,24 @@ FDC.prototype.getArgDataLen = function() {
 }
 
 FDC.prototype.doReadFromDisk = function() {
+    this.log("starting read");
+    
     this.setExecMode();
     this.clearStatusRegs0to2();
+    this.tcEnabled = true;
     
-    this.sectorIdCyl      = this.args[2];
-    this.sectorIdHead     = this.args[3];
-    this.sectorIdRec      = this.args[4];
-    this.sectorIdSizeCode = this.args[5];
+    this.sectorIdCyl      = this.args[1];
+    this.sectorIdHead     = this.args[2];
+    this.sectorIdRec      = this.args[3];
+    this.sectorIdSizeCode = this.args[4];
     
-    var fdd = this.fdds[this.args[1] & 0x03];
+    var fdd = this.fdds[this.args[0] & 0x03];
     
     if (fdd && fdd.isReady()) {
         this.activeDrive = fdd;
         this.sigReady.assert();
     } else {
-        this.regStatus0 = 0xd8 | (this.args[1] & 0x07);
+        this.regStatus0 = 0xd8 | (this.args[0] & 0x07);
         this.stopExecution();
     }
 }
@@ -183,6 +207,7 @@ FDC.prototype.doRecalibrate = function() {
 
 FDC.prototype.doSenseDriveStatus = function() {
     this.log("sense drive status");
+    
     this.regStatus3 = this.args[0] & this.ARGMASK.HEAD_DRIVE_MASK;
     var fdd = this.getArg0Drive();
 
@@ -210,18 +235,20 @@ FDC.prototype.doSenseDriveStatus = function() {
 }
 
 FDC.prototype.stopExecution = function() {
-    //    this.executingDrive = null;
+    this.activeDrive = null;
+    this.sigReady.setAsserted(false);
+    
     this.results[0]   = this.sectorIdSizeCode;
     this.results[1]   = this.sectorIdRec;
     this.results[2]   = this.sectorIdHead;
     this.results[3]   = this.sectorIdCyl;
-    this.results[4]   = this.statusReg2;
-    this.results[5]   = this.statusReg1;
-    this.results[6]   = this.statusReg0;
+    this.results[4]   = this.regStatus2;
+    this.results[5]   = this.regStatus1;
+    this.results[6]   = this.regStatus0;
     this.resultIdx    = 6;
     this.regStatus0 &= 0xF8;
-    this.regStatus0 |= (this.args[1] & 0x07);
-    //    this.interruptReq = true;
+    this.regStatus0 |= (this.args[0] & 0x07);
+    this.interruptRequested = true;
     this.setResultMode();
 }
 
@@ -232,8 +259,8 @@ FDC.prototype.clearStatusRegs0to2 = function() {
 }
 
 FDC.prototype.setExecMode = function() {
-    this.regStatus &= 0x3F;		// kein Datentransfer moeglich
-    this.regStatus |= 0x10;		// Busy
+    this.regStatus0 &= 0x3F;		// kein Datentransfer moeglich
+    this.regStatus0 |= 0x10;		// Busy
     
 //    if (!this.dmaMode) {
 //        this.regStatus |= 0x20;
@@ -246,15 +273,15 @@ FDC.prototype.setResultMode = function() {
     //    this.dmaReq             = false;
     //    this.tStatesTillIOReq   = 0;
     //    this.tStatesTillOverrun = 0;
-    this.regStatus &= this.STATUS.DRIVE_MASK;
-    this.regStatus |= this.STATUS.BUSY;
-    this.regStatus |= this.STATUS.DATA_INPUT;
-    this.regStatus |= this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatus0 &= this.STATUS.DRIVE_MASK;
+    this.regStatus0 |= this.STATUS.BUSY;
+    this.regStatus0 |= this.STATUS.DATA_INPUT;
+    this.regStatus0 |= this.STATUS.REQUEST_FOR_MASTER;
 }
 
 FDC.prototype.setIdle = function() {
-    this.regStatus &= this.STATUS.DRIVE_MASK;
-    this.regStatus |= this.STATUS.REQUEST_FOR_MASTER;
+    this.regStatus0 &= this.STATUS.DRIVE_MASK;
+    this.regStatus0 |= this.STATUS.REQUEST_FOR_MASTER;
     this.argsCount = -1;
     this.resultIdx = -1;
     this.eotReached = false;

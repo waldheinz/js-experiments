@@ -5,6 +5,8 @@ function DMA(memory, ioSys, sigReady) {
     this.memory = memory;
     this.ioSys = ioSys;
     this.sigReady = sigReady;
+    this.sigIeo = new Signal("DMA IEO");
+    this.waitReady = false;
     this.dataHandlers = [];
     
     this.reg0 = 0;
@@ -336,6 +338,11 @@ DMA.prototype.writePortA = function(val) {
 }
 
 DMA.prototype.isReady = function(signal) {
+    if (!this.waitReady) {
+        this.log("did not wait for ready");
+        return;
+    }
+    
     while (true) {
 //        this.log(this.byteCount + " bytes remaining");
         
@@ -352,13 +359,20 @@ DMA.prototype.isReady = function(signal) {
     }
     
     if (this.byteCount == -1) {
+        this.log("block done");
+        
+        this.waitReady = false;
         if (this.intEnabled && this.intOnBlockEnd) {
-            this.intPending = true;
-            this.log("XXXXXXX implement TC to FDC");
+            this.interrupt();
         } else {
             throw "up";
         }
     }
+}
+
+DMA.prototype.interrupt = function() {
+    this.intPending = true;
+    this.sigIeo.setAsserted(true);
 }
 
 DMA.prototype.acceptInterrupt = function() {
@@ -369,8 +383,12 @@ DMA.prototype.acceptInterrupt = function() {
 DMA.prototype.interruptFinish = function() {
     this.intUnderService = false;
     this.intPending = false;
+    this.sigIeo.setAsserted(false);
 }
 
 DMA.prototype.execTransfer = function() {
+    this.log("starting transfer");
+    
+    this.waitReady = true;
     this.sigReady.wait(this.isReady.bind(this));
 }

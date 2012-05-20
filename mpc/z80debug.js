@@ -69,7 +69,7 @@ Z80Debug.prototype.run = function() {
             this.cpuState.text(this.z80.toString());
             return;
         }
-//        this.cpuState.text(this.z80.toString());
+        this.cpuState.text(this.z80.toString());
         this.z80.step();
     }
     
