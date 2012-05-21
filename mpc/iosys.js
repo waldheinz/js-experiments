@@ -108,6 +108,8 @@ Z80PIOPort.prototype.setMode = function(mode) {
     
     if (mode == 3) {
         this.waitMask = true;
+    } else {
+        throw "unsupported mode " + mode;
     }
 }
 

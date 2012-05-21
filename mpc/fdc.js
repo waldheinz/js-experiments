@@ -85,10 +85,10 @@ FDC.prototype.isInterruptRequested = function() {
 FDC.prototype.readByte = function(sd) {
     if (sd == 0) {
         /* read main status register */
+        this.log("read status 0x" + this.regStatusMain.toString(16));
         return this.regStatusMain;
     } else {
         /* read data */
-        
         
         if (this.resultIdx < 0) {
             throw "fdc empty";
@@ -128,7 +128,9 @@ FDC.prototype.writeCommand = function(val) {
         /* read command */
         this.currentCommand = val;
         this.argsCount++;
+        this.log("got command " + val.toString(2) + "b");
     } else {
+        this.log("got argument " + this.argsCount + "=" + val.toString(16));
         this.args[this.argsCount++] = val;
         
         switch (this.currentCommand) {
@@ -160,7 +162,8 @@ FDC.prototype.writeCommand = function(val) {
                 if (this.argsCount == 9) {
                     this.doReadFromDisk();
                 } else {
-                    this.log("read data param " + this.argsCount + "=0x" + this.args[this.argsCount-1]);
+                    this.log("read data param " + this.argsCount + "=0x"
+                        + this.args[this.argsCount-1].toString(16));
                 }
                 break;
                 
@@ -171,12 +174,12 @@ FDC.prototype.writeCommand = function(val) {
 }
 
 FDC.prototype.getArgDataLen = function() {
-    var sizeCode = this.args[5] & 0x0F;
+    var sizeCode = this.args[4] & 0x0F;
     
     if (sizeCode > 0) {
         return 128 << sizeCode;
     } else {
-        return this.args[8];
+        return this.args[7];
     }
 }
 
@@ -193,6 +196,7 @@ FDC.prototype.doReadFromDisk = function() {
     this.sectorIdSizeCode = this.args[4];
     
     var fdd = this.fdds[this.args[0] & 0x03];
+    this.log("data len = " + this.getArgDataLen());
     
     if (fdd && fdd.isReady()) {
         this.activeDrive = fdd;
@@ -298,9 +302,9 @@ FDC.prototype.getArgHead = function() {
 
 FDC.prototype.nextSector = function() {
     if (this.sectorIdRec == this.args[5]) {
-        if((this.currentCommand & 0x80) != 0 ) {
+        if((this.currentCommand & 0x80) != 0) {
             // Multi Track
-            if ((this.args[0] & 0x04) == 0 ) {
+            if ((this.args[0] & 0x04) == 0) {
                 // Seite 0
                 this.sectorIdRec = 1;
                 this.args[0] |= 0x04;
