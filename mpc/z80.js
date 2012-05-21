@@ -1,4 +1,6 @@
 
+"use strict";
+
 var BIT = [1, 2, 4, 8, 16, 32, 64, 128]
 
 function Z80(mem, iosys) {
@@ -409,6 +411,15 @@ Z80.prototype.step = function() {
                         case 6: /* SCF */
                             this.flag.carry = true;
                             this.flag.half  = false;
+                            this.flag.n     = false;
+                            this.flag.five  = ((this.regA & BIT[5]) != 0);
+                            this.flag.three = ((this.regA & BIT[3]) != 0);
+                            this.instTStates += 4;
+                            return;
+                            
+                        case 7: /* CCF */
+                            this.flag.half  = this.flag.carry;
+                            this.flag.carry = !this.flag.carry;
                             this.flag.n     = false;
                             this.flag.five  = ((this.regA & BIT[5]) != 0);
                             this.flag.three = ((this.regA & BIT[3]) != 0);
