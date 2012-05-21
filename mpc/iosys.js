@@ -170,7 +170,20 @@ function IOSys(memory, gdc, fdc, sio_18_1) {
     }
     
     this.pio_13.portA.writeDataFunc = function(val) {
-        var mode = val & 7; /* goes to X2.1 Mo0 - Mo2, Mo0 - Mo1 used in FDC */
+        var mo = val & 7; /* goes to X2.1 Mo0 - Mo2, Mo0 - Mo1 used in FDC */
+        
+        /* decode memory bank selection */
+        if ((val & 0x40) == 0) {
+            /* addr. decoder disabled (E3 is low) */
+            throw "all mem banks disabled";
+        } else {
+            var a0 = (val & 0x10) >> 4;
+            var a1 = (val & 0x20) >> 5;
+            var a2 = (val & 0x08) >> 3;
+            var a = a0 | (a1 << 1) | (a2 << 2);
+            var bank = a < 4 ? (a + 4) : (a - 4);
+            console.log("MEM BANK " + bank + " SELECTED");
+        }
     }
     
     this.sio_18_1 = sio_18_1;
