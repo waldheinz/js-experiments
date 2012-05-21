@@ -162,7 +162,7 @@ function IOSys(memory, gdc, fdc, sio_18_1) {
     this.pio_13 = new Z80PIO("PIO_13");
     
     this.pio_13.portA.readDataFunc = function() {
-        if (fdc.isInterruptRequested()) {
+        if (!fdc.isInterruptRequested()) {
             return 1 << 7;
         } else {
             return 0;

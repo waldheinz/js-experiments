@@ -84,16 +84,16 @@ FDC.prototype.isInterruptRequested = function() {
 
 FDC.prototype.readByte = function(sd) {
     if (sd == 0) {
-        /* read status */
-        this.log("read status");
+        /* read main status register */
         return this.regStatusMain;
     } else {
         /* read data */
-        this.log("read results");
+        
         
         if (this.resultIdx < 0) {
             throw "fdc empty";
         } else {
+            this.log("read results (" + this.resultIdx + " = 0x" + this.results[this.resultIdx] + ")");
             this.interruptRequested = false;
             var result = this.results[this.resultIdx--];
             
@@ -159,6 +159,8 @@ FDC.prototype.writeCommand = function(val) {
             case 0x46: /* read data */
                 if (this.argsCount == 9) {
                     this.doReadFromDisk();
+                } else {
+                    this.log("read data param " + this.argsCount + "=0x" + this.args[this.argsCount-1]);
                 }
                 break;
                 
@@ -361,7 +363,6 @@ FDD.prototype.readSector = function(head, cyl, rec) {
     this.log("reading " + head + ", " + cyl + ", " + rec);
     
     var cylinder = this.disk.sides[head][cyl];
-    console.log(cylinder[rec-1]);
     return cylinder[rec-1];
 }
 

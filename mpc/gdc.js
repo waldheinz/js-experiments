@@ -220,8 +220,6 @@ GDC.prototype.writeByte = function(port, val) {
             }
         }
         
-        this.paint();
-        
     } else {
         /* data */
         

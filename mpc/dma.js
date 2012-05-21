@@ -5,6 +5,7 @@ function DMA(memory, ioSys, sigReady) {
     this.memory = memory;
     this.ioSys = ioSys;
     this.sigReady = sigReady;
+    this.sigReady.wait(this.isReady.bind(this));
     this.sigIeo = new Signal("DMA IEO");
     this.waitReady = false;
     this.dataHandlers = [];
@@ -390,7 +391,6 @@ DMA.prototype.execTransfer = function() {
     this.log("starting transfer");
     
     this.waitReady = true;
-    this.sigReady.wait(this.isReady.bind(this));
 }
 
 DMA.prototype.toString = function() {

@@ -33,16 +33,22 @@ function RAM(size) {
     for (var i=0; i < this.data.length; i++) {
         this.data[i] = Math.random() * 255;
     }
+    this.init = new Uint8Array(size);
+    for (i=0; i < this.data.length; i++) {
+        this.init[i] = 0;
+    }
 }
 
 RAM.prototype.writeByte = function(addr, val) {
     if (addr < this.data.length) {
         this.data[addr] = val;    
+        this.init[addr] = 1;
     }
 }
 
 RAM.prototype.getByte = function(addr) {
     if (addr < this.data.length) {
+        if (this.init[addr] == 0) throw "uninitialized read from 0x" + addr.toString(16);
         return this.data[addr] & 0xff;
     } else {
         return 0xff;

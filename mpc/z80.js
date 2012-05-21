@@ -937,7 +937,8 @@ Z80.prototype.instBlock = function(a, b) {
             this.setRegPair(2, rHL + delta);
             this.setRegPair(0, --rBC);
             this.flag.pv = (rBC != 0);
-
+            repeat &= this.flag.pv;
+            
             /* undocumented flag changes */ 
             if (this.flag.half) {
                 --result;
