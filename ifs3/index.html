@@ -134,6 +134,10 @@
                             msg.data.fitness,
                             new Image(msg.data.image));
                             
+                        if (todo.length > 0) {
+                            sendToWorker(this, todo.pop());
+                        }
+                        
                         done.push(evaluated);
                         document.getElementById("doneSpan").textContent = done.length;
                         var img = evaluated.image;
@@ -142,10 +146,6 @@
                         if (evaluated.fitness > bestFitness) {
                             bestFitness = evaluated.fitness;
                             img.paint(bCanvas);
-                        }
-                        
-                        if (todo.length > 0) {
-                            sendToWorker(w, todo.pop());
                         }
                         
                         if (done.length == jobSize) {
