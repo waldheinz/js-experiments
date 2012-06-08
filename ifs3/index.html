@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>IFS Image Evolution, Take 3</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <script src="image.js"></script>
+        <script src="ifs.js"></script>
+    </head>
+    
+    <body>
+        <img id="sourceImage" src="vv.jpg" />
+        <canvas id="targetCanvas"></canvas>
+        <canvas id="bestCanvas"></canvas>
+        <canvas id="progressCanvas"></canvas>
+        
+        <div>
+            todo: <span id="todoSpan">---</span><br />
+            done: <span id="doneSpan">---</span>
+        </div>
+        <script>
+            "use strict";
+            
+            var bestFitness = 0;
+            var workerCount = 2;
+            var popSize = 100;
+            var jobSize = 0;
+            
+            var srcImage = document.getElementById("sourceImage");
+            var pCanvas = document.getElementById("progressCanvas");
+            var bCanvas = document.getElementById("bestCanvas");
+            
+            srcImage.onload = function() {
+                var target = imageFromDocument(this);
+                target.paint(document.getElementById("targetCanvas"));
+                start(target);
+            }
+            
+            var workers = [];
+            var todo = [];
+            var done = [];
+            var population = [];
+            
+            function sendToWorker(w, ifs) {
+                document.getElementById("todoSpan").textContent = todo.length;
+                w.postMessage({
+                    'cmd' : 'eval',
+                    'ifs' : ifs.data
+                });
+            }
+            
+            function nextGeneration() {
+                population = population.concat(done);
+                done = [];
+                population.sort(function (i1, i2) {
+                    return i2.fitness - i1.fitness;
+                });
+                
+                /* breed new individuals */
+                
+                for (var i=0; i < popSize / 5; i++) {
+                    var parent = population[i].ifs.clone();
+                    parent.mutate((1 - population[i].fitness / 100) * 2);
+                    todo.push(parent);
+                }
+                
+                for (i=0; i < popSize / 5; i++) {
+                    var oidx = Math.floor(Math.random() * popSize);
+                    var other = population[oidx].ifs;
+                    var me = population[i].ifs;
+                    todo.push(me.crossover(other));
+                }
+                
+                launchWorkers();
+            }
+            
+            function launchWorkers() {
+                jobSize = todo.length;
+                
+                for (var i=0; i < workers.length; i++) {
+                    sendToWorker(workers[i], todo.pop());
+                    if (todo.length == 0) break;
+                }
+            }
+            
+            function start(target) {
+                for (var i=0; i < workerCount; i++) {
+                    var w = new Worker("evalWorker.js");
+                    
+                    w.onmessage = function(msg) {
+                        var evaluated = new Evaluated(
+                            new Ifs(msg.data.ifs),
+                            msg.data.fitness,
+                            new Image(msg.data.image));
+                            
+                        done.push(evaluated);
+                        document.getElementById("doneSpan").textContent = done.length;
+                        var img = evaluated.image;
+                        img.paint(pCanvas);
+                        
+                        if (evaluated.fitness > bestFitness) {
+                            bestFitness = evaluated.fitness;
+                            img.paint(bCanvas);
+                        }
+                        
+                        if (todo.length > 0) {
+                            sendToWorker(w, todo.pop());
+                        }
+                        
+                        if (done.length == jobSize) {
+                            nextGeneration();
+                        }
+                    }
+                    
+                    w.postMessage({
+                        'cmd' : 'init',
+                        'num' : i,
+                        'image' : target.data
+                    });
+                    workers.push(w);
+                }
+                
+                for (i=0; i < popSize; i++) {
+                    todo.push(randomIfs(50));
+                }
+                
+                launchWorkers();
+            }
+            
+        </script>
+    </body>
+</html>
