@@ -5,6 +5,8 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <script src="image.js"></script>
         <script src="ifs.js"></script>
+        <script src="../js/jquery.min.js"></script>
+        <script src="../js/jquery.flot.js"></script>
     </head>
     
     <body>
@@ -17,17 +19,23 @@
             todo: <span id="todoSpan">---</span><br />
             done: <span id="doneSpan">---</span>
         </div>
+        <div id="statsPlot" style="width:600px;height:200px;"></div>
+        
         <script>
             "use strict";
             
             var bestFitness = 0;
             var workerCount = 2;
-            var popSize = 100;
+            var popSize = 200;
             var jobSize = 0;
             
             var srcImage = document.getElementById("sourceImage");
             var pCanvas = document.getElementById("progressCanvas");
             var bCanvas = document.getElementById("bestCanvas");
+            
+            var statsDataMin = new Array();
+            var statsDataAvg = new Array();
+            var statsDataMax = new Array();
             
             srcImage.onload = function() {
                 var target = imageFromDocument(this);
@@ -39,6 +47,24 @@
             var todo = [];
             var done = [];
             var population = [];
+            var generation = 0;
+            
+            function updatePlot() {
+                $.plot($("#statsPlot"), [
+                    {
+                        label   : "max",
+                        data    : statsDataMax
+                    }, {
+                        label   : "avg",
+                        data    : statsDataAvg
+                    }, {
+                        label   : "min",
+                        data    : statsDataMin,
+                    }
+                ], {
+                    legend      : { position : "se" }
+                });
+            }
             
             function sendToWorker(w, ifs) {
                 document.getElementById("todoSpan").textContent = todo.length;
@@ -55,6 +81,8 @@
                     return i2.fitness - i1.fitness;
                 });
                 
+                population = population.slice(0, popSize);
+                
                 /* breed new individuals */
                 
                 for (var i=0; i < popSize / 5; i++) {
@@ -70,7 +98,21 @@
                     todo.push(me.crossover(other));
                 }
                 
+                var min = population[population.length - 1].fitness;
+                var max = population[0].fitness;
+                var sum = 0;
+    
+                for (var i=0; i < population.length; i++) {
+                    sum += population[i].fitness;
+                }
+                
+                statsDataMin.push([generation, min]);
+                statsDataAvg.push([generation, sum / population.length]);
+                statsDataMax.push([generation, max]);
+                
+                updatePlot();
                 launchWorkers();
+                generation++;
             }
             
             function launchWorkers() {
@@ -120,7 +162,7 @@
                 }
                 
                 for (i=0; i < popSize; i++) {
-                    todo.push(randomIfs(50));
+                    todo.push(randomIfs(100));
                 }
                 
                 launchWorkers();
