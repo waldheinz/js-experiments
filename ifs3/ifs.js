@@ -5,7 +5,7 @@ var COEFF_COUNT = 12;
 
 function Ifs(data) {
     this.data = data;
-    this.header = new Uint16Array(this.data, 0);
+    this.header = new Uint16Array(this.data, 0, 1);
     this.funcs = new Array();
     
     for (var i=0; i < this.getFunctionCount(); i++) {
@@ -26,7 +26,7 @@ function randomIfs(fCount) {
     var fdata = new Float32Array(data, 4, COEFF_COUNT * fCount);
     
     for (var i=0; i < fdata.length; i++) {
-        fdata[i] = (Math.random() - 0.5) * 0.8;
+        fdata[i] = (Math.random() - 0.5);
     }
     
     return new Ifs(data);
@@ -54,6 +54,7 @@ Ifs.prototype.mutate = function(delta) {
             }
         }
     }
+    
 }
 
 Ifs.prototype.crossover = function(other) {
@@ -94,10 +95,10 @@ Ifs.prototype.add = function(image, itDiv) {
     var x = 0;
     var y = 0;
     var c = 0;
-    var q = 100;
+    var q = this.getFunctionCount() * 4;
     var iterations = w * h * q;
     var ignored = iterations / 100;
-    var scale = 1 / (q * itDiv);
+    var scale = 1 / q;
     
     for (var i=0; i < iterations; i++) {
         var fidx = Math.floor(Math.random() * this.funcs.length);

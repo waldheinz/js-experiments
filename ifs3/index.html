@@ -10,28 +10,41 @@
     </head>
     
     <body>
-        <img id="sourceImage" src="vv.jpg" />
-        <canvas id="targetCanvas"></canvas>
-        <canvas id="bestCanvas"></canvas>
-        <canvas id="progressCanvas"></canvas>
+        <div>
+            <div>
+                <img id="sourceImage" src="vv.jpg" />
+                <canvas id="targetCanvas"></canvas>
+                <canvas id="bestCanvas"></canvas>
+                <canvas id="progressCanvas"></canvas>
+            </div>
+            
+            <progress id="genProg"></progress>
+        </div>
+        
+        <div id="statsPlot" style="width:600px;height:200px;"></div>
         
         <div>
-            todo: <span id="todoSpan">---</span><br />
-            done: <span id="doneSpan">---</span>
+            <input id="largeWidth" value="640">
+            <input id="largeHeight" value="480" />
+            <button id="largeBtn" onclick="renderLarge();">start</button>
+            <canvas id="largeCanvas"></canvas>
+            <img id="largeImage" alt="Right Click to Save me" src=""/>
         </div>
-        <div id="statsPlot" style="width:600px;height:200px;"></div>
         
         <script>
             "use strict";
             
+            var bestIfs = null;
             var bestFitness = 0;
-            var workerCount = 2;
-            var popSize = 200;
+            var workerCount = 7;
+            var popSize = 1024;
             var jobSize = 0;
-            
+            var genProg = document.getElementById("genProg");
+            var largeBtn = document.getElementById("largeBtn");
             var srcImage = document.getElementById("sourceImage");
             var pCanvas = document.getElementById("progressCanvas");
             var bCanvas = document.getElementById("bestCanvas");
+            var lCanvas = document.getElementById("largeCanvas");
             
             var statsDataMin = new Array();
             var statsDataAvg = new Array();
@@ -49,7 +62,49 @@
             var population = [];
             var generation = 0;
             
+            var stopRender = true;
+            var renderWorker = new Worker("renderWorker.js");
+            renderWorker.onmessage = function(msg) {
+                var img = new Image(msg.data);
+                img.paint(lCanvas);
+                
+                if (!stopRender) {
+                    renderWorker.postMessage({'cmd' : 'pass'});
+                }
+            }
+            
+            function renderLarge() {
+                stopRender = !stopRender;
+                
+                if (stopRender) {
+                    largeBtn.innerHTML = 'start';
+                    window.open(lCanvas.toDataURL());
+//                    document.getElementById("largeImage").src = lCanvas.toDataURL();
+                } else {
+                    largeBtn.innerHTML = 'done';
+                    
+                    renderWorker.postMessage({
+                        'cmd' : 'init',
+                        'width' : document.getElementById("largeWidth").value,
+                        'height' : document.getElementById("largeHeight").value,
+                        'ifs' : bestIfs.data
+                    });
+                }
+            }
+            
             function updatePlot() {
+                var min = population[population.length - 1].fitness;
+                var max = population[0].fitness;
+                var sum = 0;
+    
+                for (var i=0; i < population.length; i++) {
+                    sum += population[i].fitness;
+                }
+                
+                statsDataMin.push([generation, min]);
+                statsDataAvg.push([generation, sum / population.length]);
+                statsDataMax.push([generation, max]);
+                
                 $.plot($("#statsPlot"), [
                     {
                         label   : "max",
@@ -67,7 +122,6 @@
             }
             
             function sendToWorker(w, ifs) {
-                document.getElementById("todoSpan").textContent = todo.length;
                 w.postMessage({
                     'cmd' : 'eval',
                     'ifs' : ifs.data
@@ -98,18 +152,6 @@
                     todo.push(me.crossover(other));
                 }
                 
-                var min = population[population.length - 1].fitness;
-                var max = population[0].fitness;
-                var sum = 0;
-    
-                for (var i=0; i < population.length; i++) {
-                    sum += population[i].fitness;
-                }
-                
-                statsDataMin.push([generation, min]);
-                statsDataAvg.push([generation, sum / population.length]);
-                statsDataMax.push([generation, max]);
-                
                 updatePlot();
                 launchWorkers();
                 generation++;
@@ -117,6 +159,7 @@
             
             function launchWorkers() {
                 jobSize = todo.length;
+                genProg.max = jobSize;
                 
                 for (var i=0; i < workers.length; i++) {
                     sendToWorker(workers[i], todo.pop());
@@ -124,45 +167,46 @@
                 }
             }
             
+            function onEvalMessage(msg) {
+                var evaluated = new Evaluated(
+                    new Ifs(msg.data.ifs),
+                    msg.data.fitness,
+                    new Image(msg.data.image));
+
+                if (todo.length > 0) {
+                    sendToWorker(this, todo.pop());
+                }
+
+                done.push(evaluated);
+                genProg.value = done.length;
+                var img = evaluated.image;
+                img.paint(pCanvas);
+
+                if (evaluated.fitness > bestFitness) {
+                    bestIfs = evaluated.ifs;
+                    bestFitness = evaluated.fitness;
+                    img.paint(bCanvas);
+                }
+
+                if (done.length == jobSize) {
+                    nextGeneration();
+                }
+            }
+            
             function start(target) {
                 for (var i=0; i < workerCount; i++) {
                     var w = new Worker("evalWorker.js");
-                    
-                    w.onmessage = function(msg) {
-                        var evaluated = new Evaluated(
-                            new Ifs(msg.data.ifs),
-                            msg.data.fitness,
-                            new Image(msg.data.image));
-                            
-                        if (todo.length > 0) {
-                            sendToWorker(this, todo.pop());
-                        }
-                        
-                        done.push(evaluated);
-                        document.getElementById("doneSpan").textContent = done.length;
-                        var img = evaluated.image;
-                        img.paint(pCanvas);
-                        
-                        if (evaluated.fitness > bestFitness) {
-                            bestFitness = evaluated.fitness;
-                            img.paint(bCanvas);
-                        }
-                        
-                        if (done.length == jobSize) {
-                            nextGeneration();
-                        }
-                    }
+                    workers.push(w);
+                    w.onmessage = onEvalMessage;
                     
                     w.postMessage({
                         'cmd' : 'init',
-                        'num' : i,
                         'image' : target.data
                     });
-                    workers.push(w);
                 }
                 
                 for (i=0; i < popSize; i++) {
-                    todo.push(randomIfs(100));
+                    todo.push(randomIfs(64));
                 }
                 
                 launchWorkers();

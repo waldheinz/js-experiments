@@ -4,16 +4,19 @@
 function Image(data) {
     this.data = data;
     this.header = new Uint16Array(this.data, 0, 2);
+    this.scale = new Float32Array(this.data, 4, 1);
     this.pixels = new Float32Array(
-            this.data, 4, this.getWidth() * this.getHeight());
+            this.data, 8, this.getWidth() * this.getHeight());
 }
 
 function emptyImage(width, height) {
-    var data = new ArrayBuffer(4 + (width * height * 4));
+    var data = new ArrayBuffer(8 + (width * height * 4));
     var header = new Uint16Array(data, 0, 2);
-    
     header[0] = width;
     header[1] = height;
+    
+    var scale = new Float32Array(data, 4, 1);
+    scale[0] = 1;
     
     return new Image(data);
 }
@@ -24,6 +27,14 @@ Image.prototype.getWidth = function() {
 
 Image.prototype.getHeight = function() {
     return this.header[1];
+}
+
+Image.prototype.getScale = function() {
+    return this.scale[0];
+}
+
+Image.prototype.setScale = function(scale) {
+    this.scale[0] = scale;
 }
 
 Image.prototype.paint = function(canvas) {
@@ -37,6 +48,7 @@ Image.prototype.paint = function(canvas) {
     var ctx = canvas.getContext("2d");
     var cd = ctx.createImageData(w, h);
     var cdd = cd.data;
+    var scale = this.getScale();
     
     for (var y=0; y < h; y++) {
         var off = y * w;
@@ -45,9 +57,9 @@ Image.prototype.paint = function(canvas) {
             var d = this.pixels[off + x];
             var coff = (off + x) * 4;
             
-            cdd[coff + 0] = d * 255;
-            cdd[coff + 1] = d * 255;
-            cdd[coff + 2] = d * 255;
+            cdd[coff + 0] = d * 255 * scale;
+            cdd[coff + 1] = d * 255 * scale;
+            cdd[coff + 2] = d * 255 * scale;
             cdd[coff + 3] = 255;
         }
     }

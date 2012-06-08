@@ -1,15 +1,15 @@
 
+"use strict";
+
 importScripts("image.js", "ifs.js");
 
 var targetImage = null;
-var workerNum = 0;
 
 self.onmessage = function(msg) {
     var cmd = msg.data.cmd;
     
     switch (cmd) {
         case "init":
-            workerNum = msg.data.num;
             targetImage = new Image(msg.data.image);
             break;
             
