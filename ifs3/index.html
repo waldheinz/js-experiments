@@ -21,6 +21,10 @@
             <progress id="genProg"></progress>
         </div>
         
+        <p>
+            <span id="bestFitness" ></span>
+        </p>
+        
         <div id="statsPlot" style="width:600px;height:200px;"></div>
         
         <div>
@@ -37,8 +41,10 @@
             var bestIfs = null;
             var bestFitness = 0;
             var workerCount = 7;
-            var popSize = 1024;
+            var popSize = 128;
             var jobSize = 0;
+            var metroSteps = 10;
+            var metroOutstanding = 0;
             var genProg = document.getElementById("genProg");
             var largeBtn = document.getElementById("largeBtn");
             var srcImage = document.getElementById("sourceImage");
@@ -79,7 +85,6 @@
                 if (stopRender) {
                     largeBtn.innerHTML = 'start';
                     window.open(lCanvas.toDataURL());
-//                    document.getElementById("largeImage").src = lCanvas.toDataURL();
                 } else {
                     largeBtn.innerHTML = 'done';
                     
@@ -119,13 +124,11 @@
                 ], {
                     legend      : { position : "se" }
                 });
+                
             }
             
-            function sendToWorker(w, ifs) {
-                w.postMessage({
-                    'cmd' : 'eval',
-                    'ifs' : ifs.data
-                });
+            function sendToWorker(w) {
+                w.postMessage(todo.pop());
             }
             
             function nextGeneration() {
@@ -137,19 +140,45 @@
                 
                 population = population.slice(0, popSize);
                 
-                /* breed new individuals */
-                
-                for (var i=0; i < popSize / 5; i++) {
-                    var parent = population[i].ifs.clone();
-                    parent.mutate((1 - population[i].fitness / 100) * 2);
-                    todo.push(parent);
-                }
-                
-                for (i=0; i < popSize / 5; i++) {
-                    var oidx = Math.floor(Math.random() * popSize);
-                    var other = population[oidx].ifs;
-                    var me = population[i].ifs;
-                    todo.push(me.crossover(other));
+                if (metroSteps-- == 0) {
+                    /* breed new individuals */
+//                    console.log("breeding");
+                    
+                    for (var i=0; i < popSize / 5; i++) {
+                        var parent = population[i].ifs.clone();
+                        parent.mutate((1 - population[i].fitness / 100) * 2);
+                        todo.push({
+                            'cmd' : 'eval',
+                            'ifs' : parent.data
+                        });
+                    }
+
+                    for (i=0; i < popSize / 5; i++) {
+                        var oidx = Math.floor(Math.random() * popSize);
+                        var other = population[oidx].ifs;
+                        var me = population[i].ifs;
+                        todo.push({
+                            'cmd' : 'eval',
+                            'ifs' : me.crossover(other).data
+                        });
+                    }
+                    
+                    metroSteps = 5;
+                } else {
+                    /* do a metropolis round */
+//                    console.log("evolving");
+                    metroOutstanding = population.length;
+                    
+                    for (i=0; i < population.length; i++) {
+                        var e = population[i];
+                        
+                        todo.push({
+                            'cmd'       : 'metro',
+                            'index'     : i,
+                            'fit'       : e.fitness,
+                            'ifs'       : e.ifs.data
+                        });
+                    }
                 }
                 
                 updatePlot();
@@ -162,21 +191,17 @@
                 genProg.max = jobSize;
                 
                 for (var i=0; i < workers.length; i++) {
-                    sendToWorker(workers[i], todo.pop());
+                    sendToWorker(workers[i]);
                     if (todo.length == 0) break;
                 }
             }
             
-            function onEvalMessage(msg) {
+            function handleEvalDone(data) {
                 var evaluated = new Evaluated(
-                    new Ifs(msg.data.ifs),
-                    msg.data.fitness,
-                    new Image(msg.data.image));
-
-                if (todo.length > 0) {
-                    sendToWorker(this, todo.pop());
-                }
-
+                    new Ifs(data.ifs),
+                    data.fitness,
+                    new Image(data.image));
+                    
                 done.push(evaluated);
                 genProg.value = done.length;
                 var img = evaluated.image;
@@ -186,11 +211,69 @@
                     bestIfs = evaluated.ifs;
                     bestFitness = evaluated.fitness;
                     img.paint(bCanvas);
+                    
+                    $('#bestFitness').
+                        text("Best is " + parseFloat(bestFitness).toFixed(2) +
+                                "%, found at " + new Date() + ".");
                 }
 
                 if (done.length == jobSize) {
                     nextGeneration();
                 }
+            }
+            
+            function onEvalMessage(msg) {
+                if (todo.length > 0) {
+                    sendToWorker(this);
+                }
+                
+                var data = msg.data;
+                
+                switch (data.result) {
+                    case 'evalDone':
+                        handleEvalDone(data.eval);
+                        break;
+                        
+                    case 'metroAccept':
+//                        console.log("accept p=" + data.p);
+                        var evaluated = new Evaluated(
+                            new Ifs(data.eval.ifs),
+                            data.eval.fitness,
+                            new Image(data.eval.image));
+                        
+                        population[data.index] = evaluated;
+                        var img = evaluated.image;
+                        img.paint(pCanvas);
+
+                        if (evaluated.fitness > bestFitness) {
+                            bestIfs = evaluated.ifs;
+                            bestFitness = evaluated.fitness;
+                            img.paint(bCanvas);
+                            
+                            $('#bestFitness').
+                                text("Best is " + parseFloat(bestFitness).toFixed(2) +
+                                        "%, found at " + new Date() + ".");
+                        }
+                        
+                        if (--metroOutstanding == 0) {
+                            nextGeneration();
+                        }
+                        
+                        break;
+                        
+                    case 'metroReject':
+//                        console.log("reject");
+                        
+                        if (--metroOutstanding == 0) {
+                            nextGeneration();
+                        }
+                        
+                        break;
+                        
+                    default:
+                        throw 'unknown worker result ' + data.result;
+                }
+                
             }
             
             function start(target) {
@@ -206,7 +289,10 @@
                 }
                 
                 for (i=0; i < popSize; i++) {
-                    todo.push(randomIfs(64));
+                    todo.push({
+                        'cmd' : 'eval',
+                        'ifs' : randomIfs(128).data
+                    });
                 }
                 
                 launchWorkers();

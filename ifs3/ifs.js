@@ -36,7 +36,7 @@ Ifs.prototype.clone = function() {
     return new Ifs(this.data.slice(0));
 }
 
-Ifs.prototype.mutate = function(delta) {
+Ifs.prototype.mutate2 = function(delta) {
     var d2 = delta / 5;
     
     for (var func=0; func < this.funcs.length; func++) {
@@ -55,6 +55,16 @@ Ifs.prototype.mutate = function(delta) {
         }
     }
     
+}
+
+Ifs.prototype.mutate = function(delta) {
+    for (var func=0; func < this.funcs.length; func++) {
+        var f = this.funcs[func];
+
+        for (var c=0; c < f.length; c++) {
+            f[c] += (Math.random() - 0.5) * delta;
+        }
+    }
 }
 
 Ifs.prototype.crossover = function(other) {
@@ -95,7 +105,7 @@ Ifs.prototype.add = function(image, itDiv) {
     var x = 0;
     var y = 0;
     var c = 0;
-    var q = this.getFunctionCount() * 4;
+    var q = this.getFunctionCount() * 8;
     var iterations = w * h * q;
     var ignored = iterations / 100;
     var scale = 1 / q;
