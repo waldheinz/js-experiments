@@ -29,7 +29,7 @@
             var fdd = new FDD("Drive 1");
             fdc.attachDrive(0, fdd);
             
-            var systemDisk = new TeleDisk("disks/scp_m_2.89.td0");
+            var systemDisk = new TeleDisk("disks/1.TD0");
             systemDisk.load(function() {
                 fdd.loadDisk(systemDisk);
             });

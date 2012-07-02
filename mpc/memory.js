@@ -58,10 +58,18 @@ RAM.prototype.getByte = function(addr) {
 function Memory() {
     this.rom = new ROM('roms/mpc_e82cc1a2.rom');
     this.ram = new RAM(64 * 1024);
+    this.romAt0 = true;
     
     /* we will load the ROM */
     this.roms = [this.rom];
     this.nextRom = 0;
+}
+
+Memory.prototype.ioWrite = function() {
+    if (this.romAt0) {
+        console.log("mem: disable ROM at 0x0");
+        this.romAt0 = false;
+    }
 }
 
 Memory.prototype.onload = function(cb) {
@@ -85,9 +93,7 @@ Memory.prototype.load = function(cb) {
 }
 
 Memory.prototype.getByte = function(addr) {
-//    console.log("MEM read 0x" + addr.toString(16));
-    
-    if (addr < 0x1000) {
+    if (this.romAt0 && addr < 0x1000) {
         return this.rom.getByte(addr);
     } else if (addr >= 0xc000 && addr < 0xd000){
         return this.rom.getByte(addr - 0xc000);
@@ -98,6 +104,10 @@ Memory.prototype.getByte = function(addr) {
 
 Memory.prototype.writeByte = function(addr, val) {    
 //    console.log("MEM write 0x" + addr.toString(16) + " = 0x" + val.toString(16));
+    
+    if (addr >= 0xc000 && addr < 0xd000) {
+        throw "write to ROM at " + addr.toString(16);
+    }
     
     val = val & 0xff;
     

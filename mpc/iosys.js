@@ -152,6 +152,7 @@ Z80CTC.prototype.writeByte = function(port, val) {
  */
 
 function IOSys(memory, gdc, fdc, sio_18_1) {
+    this.memory = memory;
     this.gdc = gdc;
     this.fdc = fdc;
     this.dma = new DMA(memory, this, fdc.sigReady);
@@ -241,6 +242,8 @@ IOSys.prototype.readByte = function(port) {
 
 IOSys.prototype.writeByte = function(port, val) {
     var p = port & 0xff;
+    
+    this.memory.ioWrite();
     
     switch (p) {
         case 0x70: /* 01110000 */
