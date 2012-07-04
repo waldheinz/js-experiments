@@ -105,7 +105,7 @@ Memory.prototype.getByte = function(addr) {
 Memory.prototype.writeByte = function(addr, val) {    
 //    console.log("MEM write 0x" + addr.toString(16) + " = 0x" + val.toString(16));
     
-    if (addr >= 0xc000 && addr < 0xd000) {
+    if ((this.romAt0 && addr < 0x1000) || (addr >= 0xc000 && addr < 0xd000)) {
         throw "write to ROM at " + addr.toString(16);
     }
     

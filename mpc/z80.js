@@ -327,7 +327,8 @@ Z80.prototype.step = function() {
                     
                 case 6: /* 8-bit load immediate : LD r[y], n */
                     if (this.prefix != 0 && y == 6) {
-                        /* peek the immediate */
+                        /* peek the immediate, not sure if that's right */
+                        throw "LD (HL+n), xxxxx";
                         var imm = this.mem.getByte(this.regPC + 2);
                         this.setReg(y, imm);
                         this.regPC = (this.regPC + 1) & 0xffff;
@@ -1116,8 +1117,8 @@ Z80.prototype.setReg = function(r, val) {
                 case 0x00:
                     this.mem.writeByte(this.regHL, val);
                     break;
-                case 0xdd:
                     
+                case 0xdd:
                     this.mem.writeByte(this.regIX + this.nextByte(), val);
                     this.instTStates += 4;
                     break;
